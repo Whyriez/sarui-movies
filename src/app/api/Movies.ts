@@ -23,8 +23,8 @@ export const fetchMovies = async (page: number, category: string): Promise<{ mov
         }));
 
         moviesWithDetails.sort((a: Movie, b: Movie) => {
-            const dateA = new Date(a.details.release_date);
-            const dateB = new Date(b.details.release_date);
+            const dateA = new Date(a.details?.release_date ?? '');
+            const dateB = new Date(b.details?.release_date ?? '');
             return dateB.getTime() - dateA.getTime();
         });
 
@@ -58,10 +58,11 @@ export const fetchTrendingMovies = async (page: number): Promise<{ movies: Movie
         }));
 
         moviesWithDetails.sort((a: Movie, b: Movie) => {
-            const dateA = new Date(a.details.release_date);
-            const dateB = new Date(b.details.release_date);
+            const dateA = new Date(a.details?.release_date ?? '');
+            const dateB = new Date(b.details?.release_date ?? '');
             return dateB.getTime() - dateA.getTime();
         });
+        
 
         return { movies: moviesWithDetails, totalPages: data.total_pages };
     } catch (error) {
@@ -94,10 +95,11 @@ export const fetchSearchResults = async (query: string, page: number): Promise<{
         }));
 
         moviesWithDetails.sort((a: Movie, b: Movie) => {
-            const dateA = new Date(a.details.release_date);
-            const dateB = new Date(b.details.release_date);
+            const dateA = new Date(a.details?.release_date ?? '');
+            const dateB = new Date(b.details?.release_date ?? '');
             return dateB.getTime() - dateA.getTime();
         });
+        
 
         return { movies: moviesWithDetails, totalPages: data.total_pages };
     } catch (error) {
