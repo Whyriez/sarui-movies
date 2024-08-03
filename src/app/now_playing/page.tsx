@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
 import MovieCard from "@/components/ui/Card";
 import { fetchMovies } from "../api/Movies";
@@ -12,7 +12,7 @@ function NowPlaying() {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-
+    const nowPlayingRef = useRef<HTMLDivElement>(null);
 
 
     useEffect(() => {
@@ -29,6 +29,12 @@ function NowPlaying() {
         };
 
         loadMovies();
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (nowPlayingRef.current) {
+            nowPlayingRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [currentPage]);
 
     const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -56,7 +62,7 @@ function NowPlaying() {
 
     return (
         <div>
-            <div className="my-8 p-4 flex flex-col items-center">
+            <div className="my-8 p-4 flex flex-col items-center" ref={nowPlayingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Now Playing Movies</h2>
                 {loading ? (
                     <Skeleton/>

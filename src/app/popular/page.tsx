@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
 import MovieCard from "@/components/ui/Card";
 import { fetchMovies } from "../api/Movies";
@@ -12,7 +12,7 @@ function Popular() {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-
+    const popularRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const loadMovies = async () => {
@@ -28,6 +28,12 @@ function Popular() {
         };
 
         loadMovies();
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (popularRef.current) {
+            popularRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [currentPage]);
 
     const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -55,7 +61,7 @@ function Popular() {
 
     return (
         <div>
-            <div className="my-8 p-4 flex flex-col items-center">
+            <div className="my-8 p-4 flex flex-col items-center" ref={popularRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Popular Movies</h2>
                 {loading ? (
                     <Skeleton/>

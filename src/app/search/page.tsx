@@ -1,7 +1,7 @@
 'use client'
 import MovieCard from "@/components/ui/Card";
 import { Movie } from "@/interface/Movies";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchSearchResults } from "../api/Movies";
 import Skeleton from "@/components/ui/Skeleton";
 
@@ -13,6 +13,7 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
     const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
+    const searchRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const loadSearchResult = async () => {
@@ -28,6 +29,12 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
         };
 
         loadSearchResult();
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (searchRef.current) {
+            searchRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [currentPage]);
 
     const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -55,7 +62,7 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
     const { start, end } = getPaginationRange(currentPage, totalPages);
 
     return (
-        <div className="my-8 p-4 flex flex-col items-center">
+        <div className="my-8 p-4 flex flex-col items-center" ref={searchRef}>
             <h2 className="text-3xl font-bold mb-4 text-center">Search Results for "{searchQuery}"</h2>
             {loading ? (
                  <Skeleton/>

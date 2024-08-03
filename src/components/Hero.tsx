@@ -31,6 +31,12 @@ function Hero() {
         loadTrendingMovies();
     }, [currentPage]);
 
+    useEffect(() => {
+        if (trendingRef.current) {
+            trendingRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [currentPage]);
+
     const getPaginationRange = (currentPage: number, totalPages: number) => {
         let start = Math.max(currentPage - PAGE_RANGE, 1);
         let end = Math.min(currentPage + PAGE_RANGE, totalPages);
@@ -49,8 +55,11 @@ function Hero() {
     const handlePageChange = (page: number) => {
         if (page > 0 && page <= totalPages) {
             setCurrentPage(page);
+            
         }
     };
+
+    
 
     const handleExploreClick = () => {
         if (trendingRef.current) {

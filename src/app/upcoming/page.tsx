@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
 import MovieCard from "@/components/ui/Card";
 import { fetchMovies } from "../api/Movies";
@@ -12,6 +12,7 @@ function Upcoming() {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
+    const upcomingRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const loadMovies = async () => {
@@ -27,6 +28,12 @@ function Upcoming() {
         };
 
         loadMovies();
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (upcomingRef.current) {
+            upcomingRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [currentPage]);
 
     const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -54,7 +61,7 @@ function Upcoming() {
 
     return (
         <div>
-            <div className="my-8 p-4 flex flex-col items-center">
+            <div className="my-8 p-4 flex flex-col items-center" ref={upcomingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">UpComing Movies</h2>
                 {loading ? (
                    <Skeleton/>

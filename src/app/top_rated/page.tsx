@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
 import MovieCard from "@/components/ui/Card";
 import { fetchMovies } from "../api/Movies";
@@ -12,7 +12,7 @@ function TopRated() {
     const [movies, setMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-
+    const topRatedRef = useRef<HTMLDivElement>(null);
    
 
     useEffect(() => {
@@ -29,6 +29,12 @@ function TopRated() {
         };
 
         loadMovies();
+    }, [currentPage]);
+
+    useEffect(() => {
+        if (topRatedRef.current) {
+            topRatedRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [currentPage]);
 
     const getPaginationRange = (currentPage: number, totalPages: number) => {
@@ -56,7 +62,7 @@ function TopRated() {
 
     return (
         <div>
-            <div className="my-8 p-4 flex flex-col items-center">
+            <div className="my-8 p-4 flex flex-col items-center" ref={topRatedRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Top Rated Movies</h2>
                 {loading ? (
                     <Skeleton/>
