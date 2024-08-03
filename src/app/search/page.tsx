@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { fetchSearchResults } from "../api/Movies";
 import Skeleton from "@/components/ui/Skeleton";
 
-const PAGE_RANGE = 2;
+const PAGE_RANGE = 1;
 
 function Search({ searchParams }: { searchParams: { query: string, page: number } }) {
     const [currentPage, setCurrentPage] = useState(searchParams.page || 1);

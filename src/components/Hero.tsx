@@ -6,7 +6,7 @@ import { Movie } from "@/interface/Movies";
 import { fetchTrendingMovies } from "@/app/api/Movies";
 import Skeleton from "./ui/Skeleton";
 
-const PAGE_RANGE = 2;
+const PAGE_RANGE = 1;
 
 function Hero() {
     const [currentPage, setCurrentPage] = useState(1);
@@ -67,6 +67,7 @@ function Hero() {
                 style={{
                     backgroundImage: "url(background.png)",
                 }}>
+                    
                 <div className="hero-overlay bg-opacity-60"></div>
                 <div className="hero-content text-neutral-content text-center">
                     <div className="max-w-md">
