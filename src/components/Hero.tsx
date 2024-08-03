@@ -4,6 +4,7 @@ import MovieCard from "./ui/Card";
 import Navbar from "./Navbar";
 import { Movie } from "@/interface/Movies";
 import { fetchTrendingMovies } from "@/app/api/Movies";
+import Skeleton from "./ui/Skeleton";
 
 const PAGE_RANGE = 2;
 
@@ -87,7 +88,7 @@ function Hero() {
             <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Trending Movies</h2>
                 {loading ? (
-                    <p>Loading...</p>
+                    <Skeleton/>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         {movies.map((movie, index) => (
