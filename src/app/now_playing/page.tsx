@@ -5,7 +5,7 @@ import MovieCard from "@/components/ui/Card";
 import { fetchMovies } from "../api/Movies";
 import Skeleton from "@/components/ui/Skeleton";
 
-const PAGE_RANGE = 2;
+const PAGE_RANGE = 1;
 
 function NowPlaying() {
     const [currentPage, setCurrentPage] = useState(1);
