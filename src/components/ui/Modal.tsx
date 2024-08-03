@@ -50,6 +50,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                                     title="Movie Embed"
                                     frameBorder="0"
                                     allowFullScreen
+                                    referrerPolicy="origin"
                                     className="absolute top-0 left-0 w-full h-full"
                                 />
                             )}
@@ -59,6 +60,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                                     title="Trailer Embed"
                                     frameBorder="0"
                                     allowFullScreen
+                                     referrerPolicy="origin"
                                     className="absolute top-0 left-0 w-full h-full"
                                 />
                             )}
