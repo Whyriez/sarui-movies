@@ -21,7 +21,6 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                 // Mengambil iframe dari modal
                 const iframe = modalElement.querySelector('iframe') as HTMLIFrameElement;
                 if (iframe) {
-                    // Mengatur ulang src untuk menghentikan video
                     iframe.src = iframe.src;
                 }
             }
@@ -50,7 +49,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                                     title="Movie Embed"
                                     frameBorder="0"
                                     allowFullScreen
-                                    referrerPolicy="origin"
+                                   
                                     className="absolute top-0 left-0 w-full h-full"
                                 />
                             )}
@@ -60,7 +59,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                                     title="Trailer Embed"
                                     frameBorder="0"
                                     allowFullScreen
-                                     referrerPolicy="origin"
+                                    
                                     className="absolute top-0 left-0 w-full h-full"
                                 />
                             )}
@@ -72,6 +71,20 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                     </div>
                 </div>
             </dialog>
+            <style jsx>{`
+                .modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    z-index: 999;
+                }
+                .modal {
+                    z-index: 1000;
+                }
+            `}</style>
         </div>
     )
 }
