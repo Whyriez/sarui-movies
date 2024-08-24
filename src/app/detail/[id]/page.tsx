@@ -76,7 +76,7 @@ const Detail: React.FC = () => {
                         <label htmlFor="genre">Genre :</label>
                         <ul className="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box gap-2">
                             {movieDetails.genres.map((genre) => (
-                                <li key={genre.id}><a className='bg-gray-600'>{genre.name}</a></li>
+                                <li key={genre.id}><a className='bg-gray-200 text-black dark:bg-gray-600 dark:text-white'>{genre.name}</a></li>
                             ))}
                         </ul>
                     </div>
