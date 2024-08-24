@@ -72,7 +72,7 @@ function Hero() {
 
     return (
         <div>
-            <div className="hero min-h-screen relative">
+            <div className="hero min-h-screen relative bg-white">
                 <Image
                     src="/background.png"
                     alt="Background"
@@ -81,7 +81,7 @@ function Hero() {
                     quality={100}
                     className="z-0"
                 />
-                <div className="hero-overlay bg-opacity-60 z-10"></div>
+                <div className="hero-overlay bg-opacity-20 z-10"></div>
                 <div className="hero-content text-neutral-content text-center z-20">
                     <div className="max-w-md">
                         <h1 className="mb-5 text-5xl font-bold">Welcome To SaruiMovies</h1>
@@ -114,7 +114,7 @@ function Hero() {
                     </div>
 
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {movies.map((movie, index) => (
                             <MovieCard key={index} movie={movie} />
                         ))}

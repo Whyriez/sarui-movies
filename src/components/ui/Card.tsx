@@ -32,7 +32,7 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
                     {movie.title}
                     {isNewRelease && <div className="badge badge-secondary ml-2">NEW</div>}
                 </h2>
-                <p className="text-sm/6 text-gray-600 text-wrap line-clamp-2">
+                <p className="text-sm/6  text-wrap line-clamp-2">
                     {movie.details?.overview}
                 </p>
                 <div className="card-actions justify-end">

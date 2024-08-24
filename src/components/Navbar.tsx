@@ -1,6 +1,7 @@
 'use client'
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import ThemeToggle from "./ui/ThemeToggle";
 
 interface NavbarProps {
     onSearch: (query: string) => void;
@@ -50,11 +51,11 @@ function Navbar() {
                         </div>
                         <ul
                             tabIndex={0}
-                            className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[60] mt-3 w-52 p-2 shadow">
+                            className="menu menu-sm dropdown-content rounded-box z-[60] mt-3 w-52 p-2 shadow">
                             <li>
-                                <a>Movies</a>
+                                <h1>Movies</h1>
                                 <ul className="p-2">
-                                    <li><Link href={'now_playing'}>Now Playing</Link></li>
+                                    <li><Link href={'now_playing'}><p>Now Playing</p> </Link></li>
                                     <li><Link href={'popular'}>Popular</Link></li>
                                     <li><Link href={'top_rated'}>Top Rated</Link></li>
                                     <li><Link href={'upcoming'}>Upcoming</Link></li>
@@ -62,7 +63,7 @@ function Navbar() {
                             </li>
                         </ul>
                     </div>
-                    <Link href={'/'} className="btn btn-ghost text-xl">SaruiMovie</Link>
+                    <Link href={'/'} className="btn text-xl">SaruiMovie</Link>
                 </div>
                 <div className="navbar-center hidden lg:flex">
                     <ul className="menu menu-horizontal px-1 z-50">
@@ -70,7 +71,7 @@ function Navbar() {
                             <details>
                                 <summary>Movies</summary>
                                 <ul className="p-2 z-10">
-                                    <li><Link href={'/now_playing'}>Now Playing</Link></li>
+                                    <li><Link href={'/now_playing'}><p>Now Playing</p></Link></li>
                                     <li><Link href={'/popular'}>Popular</Link></li>
                                     <li><Link href={'/top_rated'}>Top Rated</Link></li>
                                     <li><Link href={'/upcoming'}>Upcoming</Link></li>
@@ -79,7 +80,11 @@ function Navbar() {
                         </li>
                     </ul>
                 </div>
-                <div className="navbar-end">
+
+
+
+                <div className="navbar-end gap-2">
+                    <ThemeToggle/>
                     <input
                         type="text"
                         placeholder="Search"
@@ -88,7 +93,9 @@ function Navbar() {
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
                     />
+
                 </div>
+
             </div>
         </div>
     )

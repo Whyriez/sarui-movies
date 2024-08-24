@@ -68,22 +68,22 @@ const Detail: React.FC = () => {
                     className="max-w-sm rounded-lg shadow-2xl"
                 />
                 <div>
-                    <h1 className="text-5xl font-bold">{movieDetails.title}</h1>
-                    <p className="py-6">
+                    <h1 className="text-5xl font-bold ">{movieDetails.title}</h1>
+                    <p className="py-6 ">
                         {movieDetails.overview}
                     </p>
                     <div>
-                        <label htmlFor="genre">Genre :</label>
+                        <label htmlFor="genre" >Genre :</label>
                         <ul className="menu menu-vertical lg:menu-horizontal bg-base-200 rounded-box gap-2">
                             {movieDetails.genres.map((genre) => (
-                                <li key={genre.id}><a className='bg-gray-200 text-black dark:bg-gray-600 dark:text-white'>{genre.name}</a></li>
+                                <li key={genre.id}><a className='shadow-md'>{genre.name}</a></li>
                             ))}
                         </ul>
                     </div>
 
-                    <p className="text-md text-gray-500">Release Date: {movieDetails.release_date}</p>
-                    <p className="text-md text-gray-500">Status: {movieDetails.status}</p>
-                    <p className="text-md text-gray-500">Rating: {movieDetails.vote_average}</p>
+                    <p className="text-md ">Release Date: {movieDetails.release_date}</p>
+                    <p className="text-md ">Status: {movieDetails.status}</p>
+                    <p className="text-md ">Rating: {movieDetails.vote_average}</p>
 
                     <div className='mt-5 flex gap-4'>
                         <button
