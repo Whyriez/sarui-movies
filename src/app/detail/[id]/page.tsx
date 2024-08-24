@@ -4,6 +4,7 @@ import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 const Detail: React.FC = () => {
     const { id: tmdbId } = useParams();
@@ -42,7 +43,7 @@ const Detail: React.FC = () => {
         fetchMovieDetails();
     }, [tmdbId]);
 
-    if (loading) return <Loading/>;
+    if (loading) return <Loading />;
 
     if (!movieDetails) return <p>No movie details found</p>;
 
@@ -59,9 +60,11 @@ const Detail: React.FC = () => {
     return (
         <div className="hero bg-base-200 min-h-screen">
             <div className="hero-content flex-col lg:flex-row">
-                <img
+                <Image
                     src={`https://image.tmdb.org/t/p/w500/${movieDetails.poster_path}`}
                     alt={movieDetails.title}
+                    width={500}
+                    height={750}
                     className="max-w-sm rounded-lg shadow-2xl"
                 />
                 <div>
@@ -96,7 +99,7 @@ const Detail: React.FC = () => {
                             Watch Trailer
                         </button>
                         <Link
-                        target='__BLANK'
+                            target='__BLANK'
                             className="btn btn-success text-white"
                             href={'https://subsource.net/subtitles'}
                         >

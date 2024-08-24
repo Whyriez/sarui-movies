@@ -5,6 +5,7 @@ import Navbar from "./Navbar";
 import { Movie } from "@/interface/Movies";
 import { fetchTrendingMovies } from "@/app/api/Movies";
 import Skeleton from "./ui/Skeleton";
+import Image from "next/image";
 
 const PAGE_RANGE = 1;
 
@@ -55,11 +56,11 @@ function Hero() {
     const handlePageChange = (page: number) => {
         if (page > 0 && page <= totalPages) {
             setCurrentPage(page);
-            
+
         }
     };
 
-    
+
 
     const handleExploreClick = () => {
         if (trendingRef.current) {
@@ -71,14 +72,17 @@ function Hero() {
 
     return (
         <div>
-            <div
-                className="hero min-h-screen"
-                style={{
-                    backgroundImage: "url(background.png)",
-                }}>
-                    
-                <div className="hero-overlay bg-opacity-60"></div>
-                <div className="hero-content text-neutral-content text-center">
+            <div className="hero min-h-screen relative">
+                <Image
+                    src="/background.png"
+                    alt="Background"
+                    layout="fill"
+                    objectFit="cover"
+                    quality={100}
+                    className="z-0"
+                />
+                <div className="hero-overlay bg-opacity-60 z-10"></div>
+                <div className="hero-content text-neutral-content text-center z-20">
                     <div className="max-w-md">
                         <h1 className="mb-5 text-5xl font-bold">Welcome To SaruiMovies</h1>
                         <p className="mb-5">
@@ -98,7 +102,7 @@ function Hero() {
             <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Trending Movies</h2>
                 {loading ? (
-                    <Skeleton/>
+                    <Skeleton />
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         {movies.map((movie, index) => (
