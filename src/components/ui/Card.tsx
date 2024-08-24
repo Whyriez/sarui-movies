@@ -17,6 +17,8 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
                 <Image
                     src={`https://image.tmdb.org/t/p/w500/${movie.details?.poster_path}`}
                     alt={movie.title}
+                    width={500}
+                    height={750}
                     className="w-full h-full object-cover"
                 />
                 {/* <img
