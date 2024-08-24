@@ -102,7 +102,17 @@ function Hero() {
             <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Trending Movies</h2>
                 {loading ? (
-                    <Skeleton />
+                    <div className="flex flex-wrap space-x-4">
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                        <Skeleton />
+                    </div>
+
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         {movies.map((movie, index) => (
