@@ -91,7 +91,7 @@ function Navbar() {
                     <input
                         type="text"
                         placeholder="Search"
-                        className="input input-bordered w-24 md:w-auto"
+                        className="input input-bordered w-40 md:w-auto"
                         value={searchQuery}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
