@@ -100,7 +100,7 @@ function Hero() {
             </div>
 
             <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
-                <h2 className="text-3xl font-bold mb-4 text-center">Trending Movies</h2>
+                <h1 className="text-3xl font-bold mb-4 text-center">Trending Movies</h1>
                 {loading ? (
                     <div className="flex flex-wrap space-x-4">
                         <Skeleton />

@@ -63,7 +63,10 @@ function Navbar() {
                             </li>
                         </ul>
                     </div>
-                    <Link href={'/'} className="btn text-xl">SaruiMovie</Link>
+                    <Link href={'/'} className="btn text-xl">
+                        <span className="hidden sm:inline">SaruiMovie</span>
+                        <span className="inline sm:hidden">SM</span>
+                    </Link>
                 </div>
                 <div className="navbar-center hidden lg:flex">
                     <ul className="menu menu-horizontal px-1 z-50">
@@ -84,7 +87,7 @@ function Navbar() {
 
 
                 <div className="navbar-end gap-2">
-                    <ThemeToggle/>
+                    <ThemeToggle />
                     <input
                         type="text"
                         placeholder="Search"
