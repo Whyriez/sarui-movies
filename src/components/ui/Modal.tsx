@@ -39,6 +39,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
 
     return (
         <div>
+             <div id={`${id}-overlay`} className="modal-overlay hidden"></div>
             <dialog id={id} className="modal">
                 <div className="modal-box  w-11/12 max-w-5xl" >
                     <div className="modal-action flex-col">
