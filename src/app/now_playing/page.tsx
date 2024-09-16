@@ -62,7 +62,7 @@ function NowPlaying() {
 
     return (
         <div>
-            <div className="my-8 p-4 flex flex-col items-center" ref={nowPlayingRef}>
+            <div className="my-16 p-4 flex flex-col items-center" ref={nowPlayingRef}>
                 <h2 className="text-3xl font-bold mb-4 text-center">Now Playing Movies</h2>
                 {loading ? (
                     <Skeleton/>

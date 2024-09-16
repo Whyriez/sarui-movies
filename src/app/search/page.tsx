@@ -62,7 +62,7 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
     const { start, end } = getPaginationRange(currentPage, totalPages);
 
     return (
-        <div className="my-8 p-4 flex flex-col items-center" ref={searchRef}>
+        <div className="my-16 p-4 flex flex-col items-center" ref={searchRef}>
             <h2 className="text-3xl font-bold mb-4 text-center">Search Results for "{searchQuery}"</h2>
             {loading ? (
                  <Skeleton/>
