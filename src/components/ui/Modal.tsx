@@ -84,7 +84,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                             {iframeSrc && (
                                 <div>
                                     <iframe
-                                        src={`https://vidsrc.xyz/embed/movie/${tmdbId}`}
+                                        src={`https://vidsrc.xyz/embed/movie/${tmdbId}`} 
                                         title={isPlay ? "Movie Embed" : "Trailer Embed"}
                                         allowFullScreen
                                         className="absolute top-0 left-0 w-full h-full"
