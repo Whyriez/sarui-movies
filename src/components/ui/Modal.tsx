@@ -76,7 +76,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                 <div className="modal-box  w-11/12 max-w-5xl" >
                     <div className="modal-action flex-col">
                         <div className="relative w-full h-0" style={{ paddingBottom: '56.25%' }}>
-                            {iframeSrc && (
+                            {/* {iframeSrc && (
                                 <div>
                                     <iframe
                                         src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${tmdbId}`} 
@@ -86,17 +86,17 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                                     />
 
                                 </div>
-                            )}
-                            {/* {isPlay && (
+                            )} */}
+                            {isPlay && (
                                 <iframe
-                                    src={`https://vidsrc.xyz/embed/movie/${tmdbId}`}
+                                    src={`https://vidsrc.io/embed/movie/${tmdbId}`}
                                     title="Movie Embed"
                                     frameBorder="0"
                                     allowFullScreen
                                    
                                     className="absolute top-0 left-0 w-full h-full"
                                 />
-                            )} */}
+                            )}
                             {isTrailer && (
                                 <iframe
                                     src={`https://www.youtube.com/embed/${trailerKey}`}
