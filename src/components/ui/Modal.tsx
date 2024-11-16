@@ -18,7 +18,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
     useEffect(() => {
         const fetchAndCleanHtml = async () => {
             if (isPlay) {
-                const res = await fetch(`https://vidsrc.xyz/embed/movie/${tmdbId}`);
+                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${tmdbId}`);
                 const html = await res.text();
 
                 // Load HTML into cheerio
@@ -39,7 +39,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                 setServerData(servers);
 
             } else if (isTrailer) {
-                setIframeSrc(`https://www.youtube.com/embed/${trailerKey}`);
+                setIframeSrc(`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`);
             }
         };
 
@@ -70,11 +70,6 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
         };
     }, [id]);
 
-    const handleServerClick = (hash: string) => {
-        const decodedText = Base64.decode(hash);
-        setIframeSrc(`//whisperingauroras.com/rcp/${hash}`);
-    };
-
     return (
         <div>
             <dialog id={id} className="modal">
@@ -84,7 +79,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                             {iframeSrc && (
                                 <div>
                                     <iframe
-                                        src={`https://vidsrc.xyz/embed/movie/${tmdbId}`} 
+                                        src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${tmdbId}`} 
                                         title={isPlay ? "Movie Embed" : "Trailer Embed"}
                                         allowFullScreen
                                         className="absolute top-0 left-0 w-full h-full"
