@@ -18,7 +18,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
     useEffect(() => {
         const fetchAndCleanHtml = async () => {
             if (isPlay) {
-                const res = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${tmdbId}`);
+                const res = await fetch(`https://vidsrc.io/embed/movie/${tmdbId}`);
                 const html = await res.text();
 
                 // Load HTML into cheerio
@@ -89,7 +89,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                             )} */}
                             {isPlay && (
                                 <iframe
-                                    src={`https://vidsrc.io/embed/movie/${tmdbId}`}
+                                    src={`https://vidbinge.dev/embed/movie/${tmdbId}`}
                                     title="Movie Embed"
                                     frameBorder="0"
                                     allowFullScreen
