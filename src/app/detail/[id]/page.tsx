@@ -57,11 +57,21 @@ const Detail: React.FC = () => {
     };
 
     const tmdbIdString = typeof tmdbId === 'string' ? tmdbId : '';
+
+    const year = new Date(movieDetails.release_date).getFullYear();
+    const formattedTitle = movieDetails.title
+        .toLowerCase()
+        .replace(/['":\s]+/g, "-")
+        .replace(/-+/g, "-")
+        .replace(/^-|-$/g, "");
+
+    const subtitle = `${formattedTitle}-${year}`;
+    
     return (
         <div className="hero bg-base-200 min-h-screen">
             <div className="hero-content flex-col lg:flex-row">
                 <Image
-                    src={`https://image.tmdb.org/t/p/w500/${movieDetails.poster_path}`}
+                    src={`${process.env.NEXT_PUBLIC_IMAGE_TMDB}/t/p/w500/${movieDetails.poster_path}`}
                     alt={movieDetails.title}
                     width={500}
                     height={750}
@@ -101,7 +111,7 @@ const Detail: React.FC = () => {
                         <Link
                             target='__BLANK'
                             className="btn btn-success text-white"
-                            href={'https://subsource.net/subtitles'}
+                            href={`https://subsource.net/subtitles/${subtitle}`}
                         >
                             Search Subtitle
                         </Link>
