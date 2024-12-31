@@ -208,7 +208,12 @@ const DetailSeasonEpisode: React.FC = () => {
                             {episodes.map((episode) => (
                                 <div key={episode.id} className="p-4 rounded-lg shadow-lg flex flex-col justify-between h-full">
                                     <div className="flex-1">
-                                        <h3 className="text-lg font-semibold mb-2">Episode {episode.episode_number} : {episode.name}</h3>
+                                        <h3 className="text-lg font-semibold mb-2">
+                                            {episode.name === `Episode ${episode.episode_number}`
+                                                ? `Episode ${episode.episode_number}`
+                                                : `Episode ${episode.episode_number} : ${episode.name}`}
+                                        </h3>
+
                                         <p className="text-sm text-gray-400 mb-2">{episode.overview || 'No overview available'}</p>
                                     </div>
                                     <div className="text-sm text-gray-500 mb-3">
