@@ -1,8 +1,11 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import MovieCard from "./ui/Card";
+import MovieCard from "./ui/MovieCard";
+import TvCard from "@/components/ui/TvCard";
 import Navbar from "./Navbar";
 import { Movie } from "@/interface/Movies";
+import { Tv } from "@/interface/Tv";
+import {Media} from "@/interface/Media"
 import { fetchTrendingMovies } from "@/app/api/Movies";
 import Skeleton from "./ui/Skeleton";
 import Image from "next/image";
@@ -11,7 +14,7 @@ const PAGE_RANGE = 1;
 
 function Hero() {
     const [currentPage, setCurrentPage] = useState(1);
-    const [movies, setMovies] = useState<Movie[]>([]);
+    const [movies, setMovies] = useState<Media[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const trendingRef = useRef<HTMLDivElement>(null);
@@ -79,6 +82,7 @@ function Hero() {
                     layout="fill"
                     objectFit="cover"
                     quality={100}
+                    priority={true}
                     className="z-0"
                 />
                 <div className="hero-overlay bg-opacity-20 z-10"></div>
@@ -102,7 +106,7 @@ function Hero() {
             <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
                 <h1 className="text-3xl font-bold mb-4 text-center">Trending Movies</h1>
                 {loading ? (
-                    <div className="flex flex-wrap space-x-4">
+                    <div className="flex flex-wrap justify-center space-x-4">
                         <Skeleton />
                         <Skeleton />
                         <Skeleton />
@@ -116,7 +120,11 @@ function Hero() {
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {movies.map((movie, index) => (
-                            <MovieCard key={index} movie={movie} />
+                            movie.mediaType === "movie" ? (
+                                <MovieCard key={index} movie={movie} />
+                            ) : (
+                                <TvCard key={index} tv={movie} />
+                            )
                         ))}
                     </div>
                 )}

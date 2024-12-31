@@ -1,17 +1,19 @@
 'use client'
 import { useEffect, useState } from 'react'
 import * as cheerio from 'cheerio';
-import Base64 from "@/utils/base64"
 
 interface Modal {
     id: string;
-    contentType: 'play' | 'trailer';
+    contentType: 'play' | 'trailer' | 'series';
     tmdbId: string;
     trailerKey?: string;
+    season?: string;
+    episode?: number; 
 }
-const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
+const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey, season, episode }) => {
     const isPlay = contentType === 'play';
     const isTrailer = contentType === 'trailer' && trailerKey;
+    const isSeries = contentType === 'series';
     const [iframeSrc, setIframeSrc] = useState<string | null>(null);
     const [serverData, setServerData] = useState<{ name: string, hash: string }[]>([]);
 
@@ -21,7 +23,6 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                 const res = await fetch(`https://vidsrc.io/embed/movie/${tmdbId}`);
                 const html = await res.text();
 
-                // Load HTML into cheerio
                 const $ = cheerio.load(html);
 
                 const iframeSrc = $('#player_iframe').attr('src');
@@ -29,12 +30,12 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
 
                 const servers = $('.server')
                     .map((i, el) => {
-                        const name = $(el).text().trim(); // Get the text content
+                        const name = $(el).text().trim(); 
                         const hash = $(el).attr('data-hash');
-                        return hash ? { name, hash } : null; // Return null if hash is undefined
+                        return hash ? { name, hash } : null;
                     })
                     .get()
-                    .filter((server): server is { name: string; hash: string } => server !== null); // Filter out null values
+                    .filter((server): server is { name: string; hash: string } => server !== null);
 
                 setServerData(servers);
 
@@ -51,7 +52,6 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
         const modalElement = document.getElementById(id) as HTMLDialogElement | null;
         const handleClose = () => {
             if (modalElement) {
-                // Mengambil iframe dari modal
                 const iframe = modalElement.querySelector('iframe') as HTMLIFrameElement;
                 if (iframe) {
                     iframe.src = iframe.src;
@@ -87,9 +87,20 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
 
                                 </div>
                             )} */}
+                            {isSeries && (
+                                <iframe
+                                    src={`${process.env.NEXT_PUBLIC_VIDEO_EMBED}/tv/${tmdbId}/${season}/${episode}`}
+                                    title="Series Embed"
+                                    frameBorder="0"
+                                    allowFullScreen
+                                   
+                                    className="absolute top-0 left-0 w-full h-full"
+                                />
+                            )}
+                            
                             {isPlay && (
                                 <iframe
-                                    src={`https://vidbinge.dev/embed/movie/${tmdbId}`}
+                                    src={`${process.env.NEXT_PUBLIC_VIDEO_EMBED}/movie/${tmdbId}`}
                                     title="Movie Embed"
                                     frameBorder="0"
                                     allowFullScreen
@@ -99,7 +110,7 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                             )}
                             {isTrailer && (
                                 <iframe
-                                    src={`https://www.youtube.com/embed/${trailerKey}`}
+                                    src={`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`}
                                     title="Trailer Embed"
                                     frameBorder="0"
                                     allowFullScreen
@@ -119,7 +130,6 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey }) => {
                             </div>
                         </div> */}
                         <form method="dialog">
-                            {/* if there is a button in form, it will close the modal */}
                             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
                         </form>
                     </div>

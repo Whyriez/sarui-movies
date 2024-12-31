@@ -1,4 +1,4 @@
-export interface Movie {
+export interface Tv {
     imdb_id: string;
     tmdb_id: string;
     title: string;

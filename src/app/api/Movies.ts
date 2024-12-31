@@ -7,12 +7,14 @@ export const fetchMovies = async (page: number, category: string): Promise<{ mov
         const response = await fetch(apiUrl);
         const data = await response.json();
 
+     
+
         const moviesWithDetails = data.results.map((movie: any) => ({
             imdb_id: movie.imdb_id,
             tmdb_id: movie.id,
             title: movie.title,
-            embed_url: `https://vidsrc.xyz/embed/movie/${movie.imdb_id}`,
-            embed_url_tmdb: `https://vidsrc.xyz/embed/movie/${movie.id}`,
+            embed_url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.imdb_id}`,
+            embed_url_tmdb: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.id}`,
             quality: movie.quality,
             details: {
                 title: movie.title,
@@ -21,6 +23,7 @@ export const fetchMovies = async (page: number, category: string): Promise<{ mov
                 release_date: movie.release_date,
             }
         }));
+
 
         moviesWithDetails.sort((a: Movie, b: Movie) => {
             const dateA = new Date(a.details?.release_date ?? '');
@@ -36,18 +39,25 @@ export const fetchMovies = async (page: number, category: string): Promise<{ mov
 };
 
 export const fetchTrendingMovies = async (page: number): Promise<{ movies: Movie[]; totalPages: number }> => {
-    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/trending/movie/day?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&page=${page}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/trending/all/day?language=en-US&page=${page}`;
 
     try {
-        const response = await fetch(apiUrl);
+        const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_BEARER_TOKEN}`,
+                'Accept': 'application/json'
+            }
+        });
         const data = await response.json();
 
         const moviesWithDetails = data.results.map((movie: any) => ({
             imdb_id: movie.imdb_id,
             tmdb_id: movie.id,
-            title: movie.title,
-            embed_url: `https://vidsrc.xyz/embed/movie/${movie.imdb_id}`,
-            embed_url_tmdb: `https://vidsrc.xyz/embed/movie/${movie.id}`,
+            title: movie.title || movie.name,
+            mediaType: movie.media_type,
+            embed_url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.imdb_id}`,
+            embed_url_tmdb: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.id}`,
             quality: movie.quality,
             details: {
                 title: movie.title,
@@ -73,7 +83,7 @@ export const fetchTrendingMovies = async (page: number): Promise<{ movies: Movie
 
 
 export const fetchSearchResults = async (query: string, page: number): Promise<{ movies: Movie[]; totalPages: number }> => {
-    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/search/movie?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&language=en-US&query=${encodeURIComponent(query)}&page=${page}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/search/multi?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&language=en-US&query=${encodeURIComponent(query)}&page=${page}`;
 
     try {
         const response = await fetch(apiUrl);
@@ -83,8 +93,9 @@ export const fetchSearchResults = async (query: string, page: number): Promise<{
             imdb_id: movie.imdb_id,
             tmdb_id: movie.id,
             title: movie.title,
-            embed_url: `https://vidsrc.xyz/embed/movie/${movie.imdb_id}`,
-            embed_url_tmdb: `https://vidsrc.xyz/embed/movie/${movie.id}`,
+            mediaType: movie.media_type,
+            embed_url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.imdb_id}`,
+            embed_url_tmdb: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${movie.id}`,
             quality: movie.quality,
             details: {
                 title: movie.title,

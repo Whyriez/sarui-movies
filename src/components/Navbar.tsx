@@ -24,7 +24,6 @@ function Navbar() {
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'Enter') {
             if (searchQuery) {
-                // Redirect to search page with query
                 window.location.href = `/search?page=1&query=${encodeURIComponent(searchQuery)}`;
             }
         }
@@ -61,6 +60,15 @@ function Navbar() {
                                     <li><Link href={'upcoming'}>Upcoming</Link></li>
                                 </ul>
                             </li>
+                            <li>
+                                <h1>TV Series</h1>
+                                <ul className="p-2">
+                                    <li><Link href={'/airing_today'}><p>Airing Today</p> </Link></li>
+                                    <li><Link href={'/on_the_air'}>On The Air</Link></li>
+                                    <li><Link href={'/popular/tv'}>Popular</Link></li>
+                                    {/* <li><Link href={'/top_rated/tv'}>Top Rated</Link></li> */}
+                                </ul>
+                            </li>
                         </ul>
                     </div>
                     <Link href={'/'} className="btn text-xl">
@@ -70,6 +78,7 @@ function Navbar() {
                 </div>
                 <div className="navbar-center hidden lg:flex">
                     <ul className="menu menu-horizontal px-1 z-50">
+                        <li><Link href={'/'}>All</Link></li>
                         <li>
                             <details>
                                 <summary>Movies</summary>
@@ -78,6 +87,17 @@ function Navbar() {
                                     <li><Link href={'/popular'}>Popular</Link></li>
                                     <li><Link href={'/top_rated'}>Top Rated</Link></li>
                                     <li><Link href={'/upcoming'}>Upcoming</Link></li>
+                                </ul>
+                            </details>
+                        </li>
+                        <li>
+                            <details>
+                                <summary>TV Series</summary>
+                                <ul className="p-2 z-10">
+                                    <li><Link href={'/airing_today'}><p>Airing Today</p> </Link></li>
+                                    <li><Link href={'/on_the_air'}>On The Air</Link></li>
+                                    <li><Link href={'/popular/tv'}>Popular</Link></li>
+                                    {/* <li><Link href={'/top_rated/tv'}>Top Rated</Link></li> */}
                                 </ul>
                             </details>
                         </li>

@@ -1,25 +1,25 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import { Movie } from "@/interface/Movies";
-import MovieCard from "@/components/ui/MovieCard";
-import { fetchMovies } from "../api/Movies";
+import TvCard from "@/components/ui/TvCard";
+import { fetchTv } from "../../api/Tv";
 import Skeleton from "@/components/ui/Skeleton";
+import { Tv } from "@/interface/Tv";
 
 const PAGE_RANGE = 1;
 
-function NowPlaying() {
+function AiringToday() {
     const [currentPage, setCurrentPage] = useState(1);
-    const [movies, setMovies] = useState<Movie[]>([]);
+    const [tvSeries, setTvSeries] = useState<Tv[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
-    const nowPlayingRef = useRef<HTMLDivElement>(null);
-
+    const topRatedRef = useRef<HTMLDivElement>(null);
+   
 
     useEffect(() => {
-        const loadMovies = async () => {
+        const loadTvAiringToday = async () => {
             try {
-                const { movies: fetchedMovies, totalPages: fetchedTotalPages } = await fetchMovies(currentPage, 'now_playing');
-                setMovies(fetchedMovies);
+                const { tvSeries: fetchedTv, totalPages: fetchedTotalPages } = await fetchTv(currentPage, 'popular');
+                setTvSeries(fetchedTv);
                 setTotalPages(fetchedTotalPages);
             } catch (error) {
                 console.error("Failed to fetch movies", error);
@@ -28,12 +28,12 @@ function NowPlaying() {
             }
         };
 
-        loadMovies();
+        loadTvAiringToday();
     }, [currentPage]);
 
     useEffect(() => {
-        if (nowPlayingRef.current) {
-            nowPlayingRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (topRatedRef.current) {
+            topRatedRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [currentPage]);
 
@@ -62,14 +62,14 @@ function NowPlaying() {
 
     return (
         <div>
-            <div className="my-16 p-4 flex flex-col items-center" ref={nowPlayingRef}>
-                <h2 className="text-3xl font-bold mb-4 text-center">Now Playing Movies</h2>
+            <div className="my-16 p-4 flex flex-col items-center" ref={topRatedRef}>
+                <h2 className="text-3xl font-bold mb-4 text-center">Popular</h2>
                 {loading ? (
                     <Skeleton/>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {movies.map((movie, index) => (
-                            <MovieCard key={index} movie={movie} />
+                        {tvSeries.map((tv, index) => (
+                            <TvCard key={index} tv={tv} />
                         ))}
                     </div>
                 )}
@@ -127,4 +127,4 @@ function NowPlaying() {
     );
 }
 
-export default NowPlaying
+export default AiringToday 

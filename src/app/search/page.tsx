@@ -1,5 +1,5 @@
 'use client'
-import MovieCard from "@/components/ui/Card";
+import MovieCard from "@/components/ui/MovieCard";
 import { Movie } from "@/interface/Movies";
 import { useEffect, useRef, useState } from "react";
 import { fetchSearchResults } from "../api/Movies";

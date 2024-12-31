@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
-import MovieCard from "@/components/ui/Card";
+import MovieCard from "@/components/ui/MovieCard";
 import { fetchMovies } from "../api/Movies";
 import Skeleton from "@/components/ui/Skeleton";
 
