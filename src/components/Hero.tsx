@@ -2,9 +2,6 @@
 import { useState, useEffect, useRef } from "react";
 import MovieCard from "./ui/MovieCard";
 import TvCard from "@/components/ui/TvCard";
-import Navbar from "./Navbar";
-import { Movie } from "@/interface/Movies";
-import { Tv } from "@/interface/Tv";
 import {Media} from "@/interface/Media"
 import { fetchTrendingMovies } from "@/app/api/Movies";
 import Skeleton from "./ui/Skeleton";
