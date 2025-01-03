@@ -1,6 +1,6 @@
 'use client'
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import ThemeToggle from "./ui/ThemeToggle";
 import { useSearchParams } from 'next/navigation';
 
@@ -8,10 +8,10 @@ interface NavbarProps {
     onSearch: (query: string) => void;
 }
 
-function Navbar() {
+function NavbarContent() {
     const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPath, setCurrentPath] = useState(window.location.pathname);
+    const [currentPath, setCurrentPath] = useState('');
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(event.target.value);
@@ -132,4 +132,14 @@ function Navbar() {
     )
 }
 
-export default Navbar
+function Navbar() {
+    return (
+        <div>
+            <Suspense fallback={<div className="navbar fixed top-0 z-50 bg-base-100">Loading...</div>}>
+                <NavbarContent />
+            </Suspense>
+        </div>
+    );
+}
+
+export default Navbar;
