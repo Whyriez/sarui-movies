@@ -153,7 +153,10 @@ const DetailTv: React.FC = () => {
                                         />
                                     </div>
 
-                                    <h3 className="text-lg font-semibold mb-2">Season {season.season_number}: {season.name}</h3>
+                                    <h3 className="text-lg font-semibold mb-2">
+                                    {season.name === `Season ${season.season_number}`
+                                                ? `Season ${season.season_number}`
+                                                : `Season ${season.season_number} : ${season.name}`}</h3>
                                     <p className="text-sm text-gray-400 mb-2">{season.overview || 'No overview available'}</p>
                                     <p className="text-sm text-gray-500">Aired on: {season.air_date}</p>
                                     <p className="text-sm text-gray-500">Episodes: {season.episode_count}</p>
