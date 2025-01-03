@@ -29,9 +29,6 @@ export const fetchTv = async (page: number, category: string): Promise<{ tvSerie
             }
         }));
 
-        
-        console.log(tvWithDetails)
-
         tvWithDetails.sort((a: Tv, b: Tv) => {
             const dateA = new Date(a.details?.release_date ?? '');
             const dateB = new Date(b.details?.release_date ?? '');

@@ -2,24 +2,30 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import ThemeToggle from "./ui/ThemeToggle";
+import { useSearchParams } from 'next/navigation';
 
 interface NavbarProps {
     onSearch: (query: string) => void;
 }
 
 function Navbar() {
+    const searchParams = useSearchParams();
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(event.target.value);
     };
 
     useEffect(() => {
-        const query = new URLSearchParams(window.location.search).get('query');
+        const query = searchParams.get('query');
         if (query) {
             setSearchQuery(query);
         }
-    }, []);
+        setCurrentPath(window.location.pathname);
+
+        
+    }, [searchParams]);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'Enter') {
@@ -28,7 +34,6 @@ function Navbar() {
             }
         }
     };
-
     return (
         <div >
             <div className="navbar fixed top-0 z-50 bg-base-100">
@@ -51,13 +56,14 @@ function Navbar() {
                         <ul
                             tabIndex={0}
                             className="menu menu-sm dropdown-content bg-base-100 rounded-box z-[60] mt-3 w-52 p-2 shadow">
+                            <li><Link href={'/'}>All</Link></li>
                             <li>
                                 <h1>Movies</h1>
                                 <ul className="p-2">
-                                    <li><Link href={'now_playing'}><p>Now Playing</p> </Link></li>
-                                    <li><Link href={'popular'}>Popular</Link></li>
-                                    <li><Link href={'top_rated'}>Top Rated</Link></li>
-                                    <li><Link href={'upcoming'}>Upcoming</Link></li>
+                                    <li><Link href={'/now_playing'}><p>Now Playing</p> </Link></li>
+                                    <li><Link href={'/popular'}>Popular</Link></li>
+                                    <li><Link href={'/top_rated'}>Top Rated</Link></li>
+                                    <li><Link href={'/upcoming'}>Upcoming</Link></li>
                                 </ul>
                             </li>
                             <li>
@@ -69,6 +75,7 @@ function Navbar() {
                                     {/* <li><Link href={'/top_rated/tv'}>Top Rated</Link></li> */}
                                 </ul>
                             </li>
+                            <li><Link href={'/anime'}>Anime</Link></li>
                         </ul>
                     </div>
                     <Link href={'/'} className="btn text-xl">
@@ -101,6 +108,7 @@ function Navbar() {
                                 </ul>
                             </details>
                         </li>
+                        <li><Link href={'/anime'}>Anime</Link></li>
                     </ul>
                 </div>
 
