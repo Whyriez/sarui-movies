@@ -3,11 +3,12 @@ import Link from "next/link";
 import Image from "next/image";
 
 interface MovieCardProps {
-    movie: Movie;
+    movie: Movie,
+    type: string
 }
 
 
-const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
+const MovieCard: React.FC<MovieCardProps> = ({ movie, type }) => {
     const releaseDate = movie.details?.release_date;
     const isNewRelease = releaseDate ? new Date(releaseDate).getFullYear() === 2024 : false;
 
@@ -21,11 +22,6 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
                     height={750}
                     className="w-full h-full object-cover"
                 />
-                {/* <img
-                src={`${process.env.NEXT_PUBLIC_IMAGE_TMDB}/t/p/w500/${movie.details?.poster_path}`}
-                alt={movie.title}
-                className="w-full h-full object-cover"
-            /> */}
             </figure>
             <div className="card-body">
                 <h2 className="card-title flex items-center">
@@ -36,17 +32,17 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie }) => {
                     {movie.details?.overview}
                 </p>
                 <div className="card-actions justify-end">
-                    <div className="card-actions justify-end">
-                        {movie.mediaType === "movie" ? (
-                            <Link href={`detail/${movie.tmdb_id}`} className="btn btn-primary">
-                                Watch Now
-                            </Link>
-                        ) : (
-                            <Link href={`detail/tv/${movie.tmdb_id}`} className="btn btn-primary">
-                                Watch Now
-                            </Link>
-                        )}
-                    </div>
+                    {type === "movie" || movie.mediaType === "movie" ? (
+                        <Link href={`detail/${movie.tmdb_id}`} className="btn btn-primary">
+                            Watch Now
+                        </Link>
+                    ) : type === "tv" && movie.mediaType === "tv" ? (
+                        <Link href={`detail/tv/${movie.tmdb_id}`} className="btn btn-primary">
+                            Watch Now
+                        </Link>
+                    ) : (
+                        <span>Unsupported media type</span>
+                    )}
 
                 </div>
             </div>
