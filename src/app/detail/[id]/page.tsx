@@ -5,42 +5,30 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { fetchMovieDetails } from '@/app/api/Movies';
 
 const Detail: React.FC = () => {
     const { id: tmdbId } = useParams();
-    const [trailerKey, setTrailerKey] = useState<string>();
+    const [trailerKey, setTrailerKey] = useState<string | null>(null);
     const [modalContentType, setModalContentType] = useState<'play' | 'trailer' | null>(null);
     const [movieDetails, setMovieDetails] = useState<MovieDetails | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchMovieDetails = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/movie/${tmdbId}?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&language=en-US`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch movie details');
-                }
-                const data = await response.json();
-                setMovieDetails(data);
-
-                const videosResponse = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/movie/${tmdbId}/videos?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}`);
-                if (!videosResponse.ok) {
-                    throw new Error('Failed to fetch movie videos');
-                }
-                const videosData = await videosResponse.json();
-                const trailer = videosData.results.find((video: any) => video.type === 'Trailer' && video.site === 'YouTube');
-                if (trailer) {
-                    setTrailerKey(trailer.key);
-                }
+                const { movieDetails, trailerKey } = await fetchMovieDetails(tmdbId as string);
+                setMovieDetails(movieDetails);
+                setTrailerKey(trailerKey);
             } catch (error) {
-                console.error("Failed to fetch movies", error);
+                console.error('Failed to fetch movie details', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchMovieDetails();
+        fetchData();
     }, [tmdbId]);
 
     if (loading) return <Loading />;

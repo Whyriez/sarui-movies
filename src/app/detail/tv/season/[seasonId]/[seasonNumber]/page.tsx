@@ -5,56 +5,12 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-
-interface Seasons {
-    id: number;
-    name: string;
-    overview: string;
-    air_date: string;
-    episode_count: number;
-    poster_path: string;
-    season_number: string;
-}
-
-export interface Episode {
-    air_date: string;
-    crew: CrewMember[];
-    episode_number: number;
-    guest_stars: GuestStar[];
-    name: string;
-    overview: string;
-    id: number;
-    production_code: string;
-    runtime: number;
-    season_number: number;
-    still_path: string | null;
-    vote_average: number;
-    vote_count: number;
-}
-
-interface CrewMember {
-
-}
-
-interface GuestStar {
-
-}
-
-export interface SeasonDetails {
-    air_date: string,
-    name: string;
-    overview: string;
-    id: number;
-    poster_path: string;
-    season_number: number;
-    vote_average: number;
-}
-
-
+import { Episode, SeasonDetails } from '@/interface/Tv';
+import { fetchTvDetails, fetchTvEpisodeDetails } from '@/app/api/Tv';
 
 const DetailSeasonEpisode: React.FC = () => {
     const { seasonId: tmdbId, seasonNumber: seasonNumber } = useParams();
-    const [trailerKey, setTrailerKey] = useState<string>();
+    const [trailerKey, setTrailerKey] = useState<string | null>(null);
     const [selectedEpisode, setSelectedEpisode] = useState<number>();
     const [modalContentType, setModalContentType] = useState<'play' | 'trailer' | 'series' | null>(null);
     const [tvDetails, setTvDetails] = useState<TvDetails | null>(null);
@@ -63,64 +19,31 @@ const DetailSeasonEpisode: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-
-        const fetchTvDetails = async () => {
+        const fetchData = async () => {
             setLoading(true);
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&language=en-US`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch movie details');
-                }
-                const data = await response.json();
-                setTvDetails(data);
+                // Fetch TV details and trailer
+                const { tvDetails, trailerKey } = await fetchTvDetails(tmdbId as string);
+                setTvDetails(tvDetails);
+                setTrailerKey(trailerKey);
 
-                const videosResponse = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/movie/${tmdbId}/videos?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}`);
-                if (!videosResponse.ok) {
-                    throw new Error('Failed to fetch movie videos');
-                }
-                const videosData = await videosResponse.json();
-                const trailer = videosData.results.find((video: any) => video.type === 'Trailer' && video.site === 'YouTube');
-                if (trailer) {
-                    setTrailerKey(trailer.key);
+                // Fetch TV episode details
+                const { episodes, seasonDetail, trailerKey: episodeTrailerKey } = await fetchTvEpisodeDetails(tmdbId as string, Number(seasonNumber));
+                setEpisodes(episodes);
+                setSeasonDetail(seasonDetail);
+
+                if (episodeTrailerKey) {
+                    setTrailerKey(episodeTrailerKey);
                 }
             } catch (error) {
-                console.error("Failed to fetch movies", error);
+                console.error('Failed to fetch TV details', error);
             } finally {
                 setLoading(false);
             }
         };
 
-        const fetchTvEpisodeDetails = async () => {
-            setLoading(true);
-            try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}/season/${seasonNumber}?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}&language=en-US`);
-                if (!response.ok) {
-                    throw new Error('Failed to fetch detail details');
-                }
-                const data = await response.json();
-
-                setEpisodes(data.episodes)
-                setSeasonDetail(data)
-
-                const videosResponse = await fetch(`${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/movie/${tmdbId}/videos?api_key=${process.env.NEXT_PUBLIC_API_KEY_TMDB}`);
-                if (!videosResponse.ok) {
-                    throw new Error('Failed to fetch movie videos');
-                }
-                const videosData = await videosResponse.json();
-                const trailer = videosData.results.find((video: any) => video.type === 'Trailer' && video.site === 'YouTube');
-                if (trailer) {
-                    setTrailerKey(trailer.key);
-                }
-            } catch (error) {
-                console.error("Failed to fetch movies", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTvEpisodeDetails();
-        fetchTvDetails();
-    }, [tmdbId]);
+        fetchData();
+    }, [tmdbId, seasonNumber]);
 
     if (loading) return <Loading />;
 

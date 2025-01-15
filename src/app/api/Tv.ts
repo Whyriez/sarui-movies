@@ -1,4 +1,4 @@
-import { Tv } from "@/interface/Tv";
+import { Episode, SeasonDetails, Seasons, Tv } from "@/interface/Tv";
 
 export const fetchTv = async (page: number, category: string): Promise<{ tvSeries: Tv[]; totalPages: number }> => {
     const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${category}?language=en-US&page=${page}`;
@@ -39,5 +39,79 @@ export const fetchTv = async (page: number, category: string): Promise<{ tvSerie
     } catch (error) {
         console.error("Failed to fetch movies", error);
         throw error;
+    }
+};
+
+export const fetchTvDetails = async (tmdbId: string): Promise<{ tvDetails: TvDetails | null; seasons: Seasons[]; trailerKey: string | null }> => {
+    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}?language=en-US`;
+    const apiVideoUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}/videos`;
+
+    const headers = {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_BEARER_TOKEN}`,
+        'Accept': 'application/json'
+    };
+
+    try {
+        const [tvResponse, videosResponse] = await Promise.all([
+            fetch(apiUrl, { method: 'GET', headers }),
+            fetch(apiVideoUrl, { method: 'GET', headers })
+        ]);
+       
+        if (!tvResponse.ok) {
+            throw new Error('Failed to fetch TV details');
+        }
+        const tvDetails = await tvResponse.json();
+
+        if (!videosResponse.ok) {
+            throw new Error('Failed to fetch TV videos');
+        }
+        const videosData = await videosResponse.json();
+
+        const trailer = videosData.results.find(
+            (video: any) => video.type === 'Trailer' && video.site === 'YouTube'
+        );
+        const trailerKey = trailer ? trailer.key : null;
+
+        return { tvDetails, seasons: tvDetails.seasons, trailerKey };
+    } catch (error) {
+        console.error('Failed to fetch TV details', error);
+        return { tvDetails: null, seasons: [], trailerKey: null };
+    }
+};
+
+export const fetchTvEpisodeDetails = async (tmdbId: string, seasonNumber: number): Promise<{ episodes: Episode[]; seasonDetail: SeasonDetails | null; trailerKey: string | null }> => {
+    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}/season/${seasonNumber}?language=en-US`;
+    const apiVideoUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/tv/${tmdbId}/videos`;
+
+    const headers = {
+        'Authorization': `Bearer ${process.env.NEXT_PUBLIC_TMDB_API_BEARER_TOKEN}`,
+        'Accept': 'application/json'
+    };
+
+    try {
+        const [seasonResponse, videosResponse] = await Promise.all([
+            fetch(apiUrl, { method: 'GET', headers }),
+            fetch(apiVideoUrl, { method: 'GET', headers })
+        ]);
+   
+        if (!seasonResponse.ok) {
+            throw new Error('Failed to fetch season details');
+        }
+        const seasonDetail = await seasonResponse.json();
+
+        if (!videosResponse.ok) {
+            throw new Error('Failed to fetch TV videos');
+        }
+        const videosData = await videosResponse.json();
+
+        const trailer = videosData.results.find(
+            (video: any) => video.type === 'Trailer' && video.site === 'YouTube'
+        );
+        const trailerKey = trailer ? trailer.key : null;
+
+        return { episodes: seasonDetail.episodes, seasonDetail, trailerKey };
+    } catch (error) {
+        console.error('Failed to fetch TV episode details', error);
+        return { episodes: [], seasonDetail: null, trailerKey: null };
     }
 };

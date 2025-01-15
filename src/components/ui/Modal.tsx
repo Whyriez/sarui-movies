@@ -6,7 +6,7 @@ interface Modal {
     id: string;
     contentType: 'play' | 'trailer' | 'series';
     tmdbId: string;
-    trailerKey?: string;
+    trailerKey?: string | null;
     season?: string;
     episode?: number;
 }
