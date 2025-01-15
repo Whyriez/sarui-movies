@@ -8,44 +8,97 @@ interface Modal {
     tmdbId: string;
     trailerKey?: string;
     season?: string;
-    episode?: number; 
+    episode?: number;
 }
 const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey, season, episode }) => {
     const isPlay = contentType === 'play';
     const isTrailer = contentType === 'trailer' && trailerKey;
     const isSeries = contentType === 'series';
-    const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-    const [serverData, setServerData] = useState<{ name: string, hash: string }[]>([]);
+    const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    const checkEmbedAvailability = async (url: string, timeout: number = 3000) => {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const response = await fetch(url, {
+                method: 'HEAD',
+                signal: controller.signal,
+            });
+            clearTimeout(timeoutId);
+
+            return response.ok;
+        } catch (error) {
+            return false;
+        }
+    };
 
     useEffect(() => {
-        const fetchAndCleanHtml = async () => {
-            if (isPlay) {
-                const res = await fetch(`https://vidsrc.io/embed/movie/${tmdbId}`);
-                const html = await res.text();
+        const determineEmbedUrl = async () => {
+            setIsLoading(true);
+            try {
+                if (isSeries && season && episode) {
+                    // Handle series URL
+                    const primaryUrl = `${process.env.NEXT_PUBLIC_VIDEO_EMBED}/tv/${tmdbId}/${season}/${episode}`;
+                    const alternativeUrl = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`;
 
-                const $ = cheerio.load(html);
+                    const isPrimaryAvailable = await checkEmbedAvailability(primaryUrl);
 
-                const iframeSrc = $('#player_iframe').attr('src');
-                setIframeSrc(iframeSrc || null);
+                    setEmbedUrl(isPrimaryAvailable ? primaryUrl : alternativeUrl);
+                } else if (isPlay) {
+                    const primaryUrl = `${process.env.NEXT_PUBLIC_VIDEO_EMBED}/movie/${tmdbId}`;
+                    const alternativeUrl = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`;
 
-                const servers = $('.server')
-                    .map((i, el) => {
-                        const name = $(el).text().trim(); 
-                        const hash = $(el).attr('data-hash');
-                        return hash ? { name, hash } : null;
-                    })
-                    .get()
-                    .filter((server): server is { name: string; hash: string } => server !== null);
+                    const isPrimaryAvailable = await checkEmbedAvailability(primaryUrl);
 
-                setServerData(servers);
-
-            } else if (isTrailer) {
-                setIframeSrc(`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`);
+                    setEmbedUrl(isPrimaryAvailable ? primaryUrl : alternativeUrl);
+                } else if (isTrailer) {
+                    setEmbedUrl(`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`);
+                }
+            } catch (error) {
+                if (isSeries) {
+                    setEmbedUrl(`${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`);
+                } else if (isPlay) {
+                    setEmbedUrl(`${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`);
+                }
+            } finally {
+                setIsLoading(false);
             }
         };
 
-        fetchAndCleanHtml();
-    }, [tmdbId, trailerKey, isPlay, isTrailer]);
+        determineEmbedUrl();
+    }, [isSeries, isPlay, isTrailer, tmdbId, season, episode, trailerKey]);
+
+    // useEffect(() => {
+    //     const fetchAndCleanHtml = async () => {
+    //         if (isPlay) {
+    //             const res = await fetch(`https://vidsrc.io/embed/movie/${tmdbId}`);
+    //             const html = await res.text();
+
+    //             const $ = cheerio.load(html);
+
+    //             const iframeSrc = $('#player_iframe').attr('src');
+    //             setIframeSrc(iframeSrc || null);
+
+    //             const servers = $('.server')
+    //                 .map((i, el) => {
+    //                     const name = $(el).text().trim(); 
+    //                     const hash = $(el).attr('data-hash');
+    //                     return hash ? { name, hash } : null;
+    //                 })
+    //                 .get()
+    //                 .filter((server): server is { name: string; hash: string } => server !== null);
+
+    //             setServerData(servers);
+
+    //         } else if (isTrailer) {
+    //             setIframeSrc(`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`);
+    //         }
+    //     };
+
+    //     fetchAndCleanHtml();
+    // }, [tmdbId, trailerKey, isPlay, isTrailer]);
 
 
     useEffect(() => {
@@ -76,47 +129,21 @@ const Modal: React.FC<Modal> = ({ id, contentType, tmdbId, trailerKey, season, e
                 <div className="modal-box  w-11/12 max-w-5xl" >
                     <div className="modal-action flex-col">
                         <div className="relative w-full h-0" style={{ paddingBottom: '56.25%' }}>
-                            {/* {iframeSrc && (
-                                <div>
+                            {isLoading ? (
+                                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                                    <div className="loading loading-spinner loading-lg"></div>
+                                </div>
+                            ) : (
+                                embedUrl && (
                                     <iframe
-                                        src={`${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/movie/${tmdbId}`} 
-                                        title={isPlay ? "Movie Embed" : "Trailer Embed"}
+                                        key={embedUrl}
+                                        src={embedUrl}
+                                        title={`${contentType} Embed`}
+                                        frameBorder="0"
                                         allowFullScreen
                                         className="absolute top-0 left-0 w-full h-full"
                                     />
-
-                                </div>
-                            )} */}
-                            {isSeries && (
-                                <iframe
-                                    src={`${process.env.NEXT_PUBLIC_VIDEO_EMBED}/tv/${tmdbId}/${season}/${episode}`}
-                                    title="Series Embed"
-                                    frameBorder="0"
-                                    allowFullScreen
-                                   
-                                    className="absolute top-0 left-0 w-full h-full"
-                                />
-                            )}
-                            
-                            {isPlay && (
-                                <iframe
-                                    src={`${process.env.NEXT_PUBLIC_VIDEO_EMBED}/movie/${tmdbId}`}
-                                    title="Movie Embed"
-                                    frameBorder="0"
-                                    allowFullScreen
-                                   
-                                    className="absolute top-0 left-0 w-full h-full"
-                                />
-                            )}
-                            {isTrailer && (
-                                <iframe
-                                    src={`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`}
-                                    title="Trailer Embed"
-                                    frameBorder="0"
-                                    allowFullScreen
-
-                                    className="absolute top-0 left-0 w-full h-full"
-                                />
+                                )
                             )}
                         </div>
                         {/* <div className="servers">

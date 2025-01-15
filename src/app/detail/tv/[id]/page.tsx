@@ -114,12 +114,6 @@ const DetailTv: React.FC = () => {
 
                             <div className="mt-5 flex flex-wrap gap-4">
                                 <button
-                                    className="btn btn-secondary text-white"
-                                    onClick={() => handleShowModal('play')}
-                                >
-                                    Play Now
-                                </button>
-                                <button
                                     className="btn btn-error text-white"
                                     onClick={() => handleShowModal('trailer')}
                                 >

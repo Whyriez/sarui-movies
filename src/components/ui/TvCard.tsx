@@ -35,7 +35,7 @@ const MovieCard: React.FC<TvCardProps> = ({ tv }) => {
                     {tv.details?.overview}
                 </p>
                 <div className="card-actions justify-end">
-                    <Link href={`detail/tv/${tv.tmdb_id}`} className="btn btn-primary">Watch Now</Link>
+                    <Link href={`/detail/tv/${tv.tmdb_id}`} className="btn btn-primary">Watch Now</Link>
                 </div>
             </div>
         </div>
