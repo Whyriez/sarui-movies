@@ -155,7 +155,7 @@ const DetailSeasonEpisode: React.FC = () => {
 
                 </div>
                 {modalContentType && (
-                    <Modal id='modal' contentType={modalContentType} tmdbId={tmdbIdString} trailerKey={trailerKey} season={seasonNumberString} episode={selectedEpisode} />
+                    <Modal id='modal' contentType={modalContentType} tmdbId={tmdbIdString} title={tvDetails.name} trailerKey={trailerKey} season={seasonNumberString} episode={selectedEpisode} />
                 )}
             </div>
         </div>

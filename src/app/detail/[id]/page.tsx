@@ -108,7 +108,7 @@ const Detail: React.FC = () => {
                     </div>
                 </div>
                 {modalContentType && (
-                    <Modal id='modal' contentType={modalContentType} tmdbId={tmdbIdString} trailerKey={trailerKey} />
+                    <Modal id='modal' contentType={modalContentType} title={movieDetails.title} tmdbId={tmdbIdString} trailerKey={trailerKey} />
                 )}
             </div>
 
