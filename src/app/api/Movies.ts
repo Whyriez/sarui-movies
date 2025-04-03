@@ -43,7 +43,7 @@ export const fetchMovies = async (page: number, category: string): Promise<{ mov
 };
 
 export const fetchTrendingMovies = async (page: number): Promise<{ movies: Movie[]; totalPages: number }> => {
-    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/trending/all/day?language=en-US&page=${page}`;
+    const apiUrl = `${process.env.NEXT_PUBLIC_TMDB_BASE_URL}/trending/movie/day?language=en-US&page=${page}`;
 
     try {
         const response = await fetch(apiUrl, {

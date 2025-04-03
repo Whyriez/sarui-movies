@@ -64,6 +64,7 @@ function NavbarContent() {
                                     <li><Link href={'/popular'}>Popular</Link></li>
                                     <li><Link href={'/top_rated'}>Top Rated</Link></li>
                                     <li><Link href={'/upcoming'}>Upcoming</Link></li>
+                                    <li><Link href={'/trending'}>Trending</Link></li>
                                 </ul>
                             </li>
                             <li>
@@ -72,6 +73,7 @@ function NavbarContent() {
                                     <li><Link href={'/airing_today'}><p>Airing Today</p> </Link></li>
                                     <li><Link href={'/on_the_air'}>On The Air</Link></li>
                                     <li><Link href={'/popular/tv'}>Popular</Link></li>
+                                    <li><Link href={'/trending/tv'}>Trending</Link></li>
                                     {/* <li><Link href={'/top_rated/tv'}>Top Rated</Link></li> */}
                                 </ul>
                             </li>
@@ -94,6 +96,7 @@ function NavbarContent() {
                                     <li><Link href={'/popular'}>Popular</Link></li>
                                     <li><Link href={'/top_rated'}>Top Rated</Link></li>
                                     <li><Link href={'/upcoming'}>Upcoming</Link></li>
+                                    <li><Link href={'/trending'}>Trending</Link></li>
                                 </ul>
                             </details>
                         </li>
@@ -104,6 +107,7 @@ function NavbarContent() {
                                     <li><Link href={'/airing_today'}><p>Airing Today</p> </Link></li>
                                     <li><Link href={'/on_the_air'}>On The Air</Link></li>
                                     <li><Link href={'/popular/tv'}>Popular</Link></li>
+                                    <li><Link href={'/trending/tv'}>Trending</Link></li>
                                     {/* <li><Link href={'/top_rated/tv'}>Top Rated</Link></li> */}
                                 </ul>
                             </details>
