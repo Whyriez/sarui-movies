@@ -54,13 +54,26 @@ const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, se
                     } else if (isPlay) {
                         url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-movie-${tmdbId}-${formattedTitle}`;
                     }
-                } else {
+                } else if (selectedServer === "server2") {
                     if (isSeries && season && episode) {
                         url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`;
                     } else if (isPlay) {
                         url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`;
                     }
+                } else if (selectedServer === "server3") {
+                    if (isSeries && season && episode) {
+                        url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
+                    } else if (isPlay) {
+                        url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
+                    }
+                } else if (selectedServer === "server4") {
+                    if (isSeries && season && episode) {
+                        url = `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+                    } else if (isPlay) {
+                        url = `https://vidlink.pro/movie/${tmdbId}`;
+                    }
                 }
+                
 
                 const isAvailable = await checkEmbedAvailability(url);
                 setEmbedUrl(isAvailable ? url : `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`);
@@ -162,6 +175,18 @@ const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, se
                                 onClick={() => setSelectedServer("server2")}
                             >
                                 Server 2
+                            </button>
+                            <button
+                                className={`btn ${selectedServer === 'server3' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setSelectedServer("server3")}
+                            >
+                                Server 3
+                            </button>
+                            <button
+                                className={`btn ${selectedServer === 'server4' ? 'btn-primary' : 'btn-secondary'}`}
+                                onClick={() => setSelectedServer("server4")}
+                            >
+                                Server 4
                             </button>
                         </div>
                         <form method="dialog">
