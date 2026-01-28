@@ -25,6 +25,9 @@ const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, se
     const formattedTitle = formatTitle(title);
     const [selectedServer, setSelectedServer] = useState("server1");
 
+    const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+    const [isUploadingSub, setIsUploadingSub] = useState(false);
+
     const checkEmbedAvailability = async (url: string, timeout: number = 3000) => {
         try {
             const controller = new AbortController();
@@ -42,50 +45,102 @@ const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, se
         }
     };
 
-    useEffect(() => {
-        const determineEmbedUrl = async () => {
-            setIsLoading(true);
-            try {
-                let url = '';
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || e.target.files.length === 0) return;
 
-                if (selectedServer === "server1") {
-                    if (isSeries && season && episode) {
-                        url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-tv-${tmdbId}-${formattedTitle}`;
-                    } else if (isPlay) {
-                        url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-movie-${tmdbId}-${formattedTitle}`;
-                    }
-                } else if (selectedServer === "server2") {
-                    if (isSeries && season && episode) {
-                        url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`;
-                    } else if (isPlay) {
-                        url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`;
-                    }
-                } else if (selectedServer === "server3") {
-                    if (isSeries && season && episode) {
-                        url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
-                    } else if (isPlay) {
-                        url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
-                    }
-                } else if (selectedServer === "server4") {
-                    if (isSeries && season && episode) {
-                        url = `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
-                    } else if (isPlay) {
-                        url = `https://vidlink.pro/movie/${tmdbId}`;
-                    }
-                }
-                
+        const file = e.target.files[0];
+        setIsUploadingSub(true);
 
-                const isAvailable = await checkEmbedAvailability(url);
-                setEmbedUrl(isAvailable ? url : `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`);
-            } catch (error) {
-                setEmbedUrl(`${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`);
-            } finally {
-                setIsLoading(false);
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const res = await fetch('/api/upload-subtitle', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const data = await res.json();
+            if (res.ok && data.url) {
+                setSubtitleUrl(data.url);
+            } else {
+                alert('Gagal upload subtitle: ' + (data.error || 'Unknown error'));
             }
+        } catch (error) {
+            console.error(error);
+            alert('Terjadi kesalahan saat upload subtitle');
+            setIsLoading(false);
+        } finally {
+            setIsUploadingSub(false);
+        }
+    };
+
+    useEffect(() => {
+        setSubtitleUrl(null);
+    }, [tmdbId, season, episode]);
+
+    useEffect(() => {
+        const determineEmbedUrl = () => {
+            setIsLoading(true);
+            let url = '';
+
+            // Hapus pengecekan fetch (CORS issue), langsung construct URL
+            if (selectedServer === "server1") {
+                if (isSeries && season && episode) {
+                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-tv-${tmdbId}-${formattedTitle}`;
+                } else if (isPlay) {
+                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-movie-${tmdbId}-${formattedTitle}`;
+                }
+            } else if (selectedServer === "server2") {
+                if (isSeries && season && episode) {
+                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`;
+                } else if (isPlay) {
+                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`;
+                }
+            } else if (selectedServer === "server3") {
+                if (isSeries && season && episode) {
+                    url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
+                } else if (isPlay) {
+                    url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
+                }
+            } else if (selectedServer === "server4") {
+                // --- LOGIKA SERVER 4 DENGAN SUBTITLE ---
+
+                let baseUrl = '';
+                if (isSeries && season && episode) {
+                    baseUrl = `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
+                } else if (isPlay) {
+                    baseUrl = `https://vidlink.pro/movie/${tmdbId}`;
+                }
+
+                // Gunakan URLSearchParams untuk menyusun query string dengan rapi
+                const params = new URLSearchParams();
+
+                // 1. Params Next Button (Sesuai request)
+                if (isSeries) {
+                    params.append('nextbutton', 'true');
+                }
+
+                // 2. Params Subtitle (JIKA ADA URL HASIL UPLOAD)
+                if (subtitleUrl) {
+                    params.append('sub_file', subtitleUrl);
+                    params.append('sub_label', 'Indonesian / Custom'); // Label subtitle di player
+                }
+
+                // Gabungkan Base URL + Params
+                // Cek apakah baseUrl sudah punya '?' (jarang terjadi di vidlink clean url, tapi buat jaga-jaga)
+                const queryString = params.toString();
+                url = queryString ? `${baseUrl}?${queryString}` : baseUrl;
+            }
+
+            setEmbedUrl(url);
+           setTimeout(() => {
+                setIsLoading(false);
+            }, 500); // Delay 0.5 detik cukup
         };
 
         determineEmbedUrl();
-    }, [selectedServer, isSeries, isPlay, isTrailer, tmdbId, formattedTitle, season, episode, trailerKey]);
+    }, [selectedServer, isSeries, isPlay, isTrailer, tmdbId, formattedTitle, season, episode, trailerKey, subtitleUrl]);
 
     // useEffect(() => {
     //     const fetchAndCleanHtml = async () => {
@@ -147,47 +202,60 @@ const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, se
                     <div className="modal-action flex-col">
                         <div className="relative w-full h-0" style={{ paddingBottom: '56.25%' }}>
                             {isLoading ? (
-                                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center">
+                                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/10">
                                     <div className="loading loading-spinner loading-lg"></div>
                                 </div>
                             ) : (
                                 embedUrl && (
                                     <iframe
                                         key={embedUrl}
+
                                         src={embedUrl}
                                         title={`${contentType} Embed`}
                                         frameBorder="0"
                                         allowFullScreen
-                                        className="absolute top-0 left-0 w-full h-full"
+                                        className="absolute top-0 left-0 w-full h-full rounded-lg"
                                     />
                                 )
                             )}
                         </div>
                         <div className="flex justify-center gap-4 mt-4">
-                            <button
-                                className={`btn ${selectedServer === 'server1' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setSelectedServer("server1")}
-                            >
-                                Server 1
-                            </button>
-                            <button
-                                className={`btn ${selectedServer === 'server2' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setSelectedServer("server2")}
-                            >
-                                Server 2
-                            </button>
-                            <button
-                                className={`btn ${selectedServer === 'server3' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setSelectedServer("server3")}
-                            >
-                                Server 3
-                            </button>
-                            <button
-                                className={`btn ${selectedServer === 'server4' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setSelectedServer("server4")}
-                            >
-                                Server 4
-                            </button>
+                            <div className="flex flex-wrap justify-center gap-2">
+                                {['server1', 'server2', 'server3', 'server4'].map((server) => (
+                                    <button
+                                        key={server}
+                                        className={`btn btn-sm sm:btn-md ${selectedServer === server ? 'btn-primary' : 'btn-outline'}`}
+                                        onClick={() => setSelectedServer(server)}
+                                    >
+                                        {server.charAt(0).toUpperCase() + server.slice(1).replace('server', 'Server ')}
+                                    </button>
+                                ))}
+                            </div>
+                            {selectedServer === 'server4' && (
+                                <div className="flex flex-col items-center p-3 bg-base-200 rounded-lg w-full max-w-md">
+                                    <span className="text-sm font-semibold mb-2">
+                                        Custom Subtitle (.srt / .vtt)
+                                    </span>
+                                    <div className="flex items-center gap-2 w-full">
+                                        <input
+                                            type="file"
+                                            accept=".srt,.vtt"
+                                            onChange={handleFileUpload}
+                                            className="file-input file-input-bordered file-input-sm w-full"
+                                            disabled={isUploadingSub}
+                                        />
+                                        {isUploadingSub && <span className="loading loading-spinner loading-sm"></span>}
+                                    </div>
+                                    <p className="text-xs text-opacity-50 mt-1 text-center">
+                                        Subtitle akan dikonversi otomatis dan berlaku 24 jam.
+                                    </p>
+                                    {subtitleUrl && (
+                                        <div className="badge badge-success gap-2 mt-2">
+                                            Subtitle Active
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                         <form method="dialog">
                             <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
