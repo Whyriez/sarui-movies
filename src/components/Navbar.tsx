@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { Suspense, useEffect, useState } from "react";
 import ThemeToggle from "./ui/ThemeToggle";
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface NavbarProps {
     onSearch: (query: string) => void;
@@ -10,8 +10,8 @@ interface NavbarProps {
 
 function NavbarContent() {
     const searchParams = useSearchParams();
+    const router = useRouter();
     const [searchQuery, setSearchQuery] = useState('');
-    const [currentPath, setCurrentPath] = useState('');
 
     const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         setSearchQuery(event.target.value);
@@ -19,18 +19,15 @@ function NavbarContent() {
 
     useEffect(() => {
         const query = searchParams.get('query');
-        if (query) {
-            setSearchQuery(query);
-        }
-        setCurrentPath(window.location.pathname);
+        setSearchQuery(query ?? '');
 
         
     }, [searchParams]);
 
     const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
         if (event.key === 'Enter') {
-            if (searchQuery) {
-                window.location.href = `/search?page=1&query=${encodeURIComponent(searchQuery)}`;
+            if (searchQuery.trim()) {
+                router.push(`/search?page=1&query=${encodeURIComponent(searchQuery.trim())}`);
             }
         }
     };

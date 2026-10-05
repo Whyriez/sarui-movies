@@ -1,6 +1,6 @@
 import { Movie } from "@/interface/Movies";
 import Link from "next/link";
-import Image from "next/image";
+import Poster from "./Poster";
 
 interface MovieCardProps {
     movie: Movie,
@@ -10,13 +10,13 @@ interface MovieCardProps {
 
 const MovieCard: React.FC<MovieCardProps> = ({ movie, type }) => {
     const releaseDate = movie.details?.release_date;
-    const isNewRelease = releaseDate ? new Date(releaseDate).getFullYear() === 2024 : false;
+    const isNewRelease = releaseDate ? new Date(releaseDate).getFullYear() === new Date().getFullYear() : false;
 
     return (
         <div className="card card-compact bg-base-100 w-auto shadow-xl">
             <figure className="w-full h-[32rem]">
-                <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGE_TMDB}/t/p/w500/${movie.details?.poster_path}`}
+                <Poster
+                    path={movie.details?.poster_path}
                     alt={movie.title}
                     width={500}
                     height={750}
@@ -33,11 +33,11 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, type }) => {
                 </p>
                 <div className="card-actions justify-end">
                     {type === "movie" || movie.mediaType === "movie" ? (
-                        <Link href={`detail/${movie.tmdb_id}`} className="btn btn-primary">
+                        <Link href={`/detail/${movie.tmdb_id}`} className="btn btn-primary">
                             Watch Now
                         </Link>
-                    ) : type === "tv" && movie.mediaType === "tv" ? (
-                        <Link href={`detail/tv/${movie.tmdb_id}`} className="btn btn-primary">
+                    ) : type === "tv" || movie.mediaType === "tv" ? (
+                        <Link href={`/detail/tv/${movie.tmdb_id}`} className="btn btn-primary">
                             Watch Now
                         </Link>
                     ) : (

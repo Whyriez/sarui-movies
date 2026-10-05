@@ -20,8 +20,8 @@ export interface Seasons {
     overview: string;
     air_date: string;
     episode_count: number;
-    poster_path: string;
-    season_number: string;
+    poster_path: string | null;
+    season_number: number;
 }
 
 export interface Episode {
@@ -53,7 +53,7 @@ export interface SeasonDetails {
     name: string;
     overview: string;
     id: number;
-    poster_path: string;
+    poster_path: string | null;
     season_number: number;
     vote_average: number;
 }

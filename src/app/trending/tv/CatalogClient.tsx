@@ -1,31 +1,30 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import MovieCard from "./ui/MovieCard";
 import TvCard from "@/components/ui/TvCard";
-import {Media} from "@/interface/Media"
-import { fetchTrendingMovies } from "@/app/api/Movies";
-import Skeleton from "./ui/Skeleton";
-import Image from "next/image";
+import { fetchTrendingTv } from "../../api/Tv";
+import Skeleton from "@/components/ui/Skeleton";
+import { Tv } from "@/interface/Tv";
 
 const PAGE_RANGE = 1;
 
-function Hero() {
+function TrendingTv() {
     const [currentPage, setCurrentPage] = useState(1);
-    const [movies, setMovies] = useState<Media[]>([]);
+    const [tv, setTv] = useState<Tv[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const trendingRef = useRef<HTMLDivElement>(null);
+   
 
     useEffect(() => {
         let active = true;
         setLoading(true);
         setError(null);
-        const loadTrendingMovies = async () => {
+        const loadMovies = async () => {
             try {
-                const { movies: fetchedMovies, totalPages: fetchedTotalPages } = await fetchTrendingMovies(currentPage);
+                const { tv: fetchedMovies, totalPages: fetchedTotalPages } = await fetchTrendingTv(currentPage);
                 if (!active) return;
-                setMovies(fetchedMovies);
+                setTv(fetchedMovies);
                 setTotalPages(fetchedTotalPages);
             } catch (error) {
                 if (!active) return;
@@ -35,7 +34,7 @@ function Hero() {
             }
         };
 
-        loadTrendingMovies();
+        loadMovies();
         return () => { active = false; };
     }, [currentPage]);
 
@@ -63,15 +62,6 @@ function Hero() {
     const handlePageChange = (page: number) => {
         if (page > 0 && page <= totalPages) {
             setCurrentPage(page);
-
-        }
-    };
-
-
-
-    const handleExploreClick = () => {
-        if (trendingRef.current) {
-            trendingRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
 
@@ -79,60 +69,18 @@ function Hero() {
 
     return (
         <div>
-            <div className="hero min-h-screen relative bg-white">
-                <Image
-                    src="/background.png"
-                    alt="Background"
-                    layout="fill"
-                    objectFit="cover"
-                    quality={100}
-                    priority={true}
-                    className="z-0"
-                />
-                <div className="hero-overlay bg-opacity-20 z-10"></div>
-                <div className="hero-content text-neutral-content text-center z-20">
-                    <div className="max-w-md">
-                        <h1 className="mb-5 text-5xl font-bold">Welcome To SaruiMovies</h1>
-                        <p className="mb-5">
-                            Discover the latest and greatest in the world of cinema.
-                            From trending hits to hidden gems, SaruiMovies brings you
-                            a curated selection of movies that are sure to captivate
-                            and entertain. Dive into the cinematic universe and find
-                            your next favorite film with ease.
-                        </p>
-                        <button onClick={handleExploreClick} className="btn btn-primary bg-gradient-to-r from-teal-400 to-blue-500 text-white hover:bg-gradient-to-l hover:from-teal-500 hover:to-blue-400 transition-all duration-300">
-                            Explore Now
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div className="my-8 p-4 flex flex-col items-center" ref={trendingRef}>
-                <h1 className="text-3xl font-bold mb-4 text-center">All Movies/Tv Series</h1>
+            <div className="my-16 p-4 flex flex-col items-center" ref={trendingRef}>
+                <h2 className="text-3xl font-bold mb-4 text-center">Trending Tv</h2>
                 {loading ? (
-                    <div className="flex flex-wrap justify-center space-x-4">
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                        <Skeleton />
-                    </div>
-
+                    <Skeleton/>
                 ) : error ? (
                     <p role="alert">{error}</p>
-                ) : movies.length === 0 ? (
+                ) : tv.length === 0 ? (
                     <p>Tidak ada film atau serial yang tersedia di halaman ini.</p>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {movies.map((movie, index) => (
-                            movie.mediaType === "movie" ? (
-                                <MovieCard key={index} movie={movie} type="movie" />
-                            ) : (
-                                <TvCard key={index} tv={movie} />
-                            )
+                        {tv.map((tv, index) => (
+                           <TvCard key={index} tv={tv} />
                         ))}
                     </div>
                 )}
@@ -190,4 +138,4 @@ function Hero() {
     );
 }
 
-export default Hero;
+export default TrendingTv

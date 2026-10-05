@@ -1,6 +1,6 @@
 import { Tv } from "@/interface/Tv";
 import Link from "next/link";
-import Image from "next/image";
+import Poster from "./Poster";
 
 interface TvCardProps {
     tv: Tv;
@@ -8,23 +8,18 @@ interface TvCardProps {
 
 const MovieCard: React.FC<TvCardProps> = ({ tv }) => {
     const releaseDate = tv.details?.release_date;
-    const isNewRelease = releaseDate ? new Date(releaseDate).getFullYear() === 2024 : false;
+    const isNewRelease = releaseDate ? new Date(releaseDate).getFullYear() === new Date().getFullYear() : false;
 
     return (
         <div className="card card-compact bg-base-100 w-auto shadow-xl">
             <figure className="w-full h-[32rem]">
-                <Image
-                    src={`${process.env.NEXT_PUBLIC_IMAGE_TMDB}/t/p/w500/${tv.details?.poster_path}`}
+                <Poster
+                    path={tv.details?.poster_path}
                     alt={tv.title}
                     width={500}
                     height={750}
                     className="w-full h-full object-cover"
                 />
-                {/* <img
-                src={`${process.env.NEXT_PUBLIC_IMAGE_TMDB}/t/p/w500/${movie.details?.poster_path}`}
-                alt={movie.title}
-                className="w-full h-full object-cover"
-            /> */}
             </figure>
             <div className="card-body">
                 <h2 className="card-title flex items-center">

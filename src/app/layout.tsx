@@ -7,7 +7,7 @@ import Navbar from "@/components/Navbar";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "SaruiMovie",
+  title: { default: "SaruiMovie", template: "%s | SaruiMovie" },
   description: "Show Movies",
 };
 
@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="id">
       <body className={inter.className}>
         <Navbar/>
         {children}
