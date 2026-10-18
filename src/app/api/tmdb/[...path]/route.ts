@@ -6,7 +6,7 @@ export async function GET(request: NextRequest, { params }: { params: { path: st
         return NextResponse.json(await getTmdbData(params.path.join('/'), request.nextUrl.searchParams));
     } catch (error) {
         return NextResponse.json(
-            { error: error instanceof TmdbError ? error.message : 'Data TMDB gagal dimuat. Coba lagi.' },
+            { error: error instanceof TmdbError ? error.message : 'Failed to load TMDB data. Please try again.' },
             { status: error instanceof TmdbError ? error.status : 502 }
         );
     }

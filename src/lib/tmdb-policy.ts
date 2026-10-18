@@ -88,13 +88,13 @@ export function canShowInCatalog(media: TmdbMedia, type?: MediaType): boolean {
 }
 
 export function getMediaTitle(media: TmdbMedia): string {
-    const original = (media.original_title ?? media.original_name)?.trim();
     const localized = (media.title ?? media.name)?.trim();
-    return (media.original_language === 'id' ? original || localized : localized || original) || 'Tanpa judul';
+    const original = (media.original_title ?? media.original_name)?.trim();
+    return localized || original || 'Untitled';
 }
 
 export function getOverviewText(overview?: string | null): string {
-    return overview?.trim() || 'Sinopsis belum tersedia.';
+    return overview?.trim() || 'Synopsis not available.';
 }
 
 export function getTrailerKey(videos?: TmdbVideos): string | null {

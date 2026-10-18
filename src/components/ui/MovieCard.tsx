@@ -56,9 +56,9 @@ const MovieCard: React.FC<MovieCardProps> = ({ movie, type }) => {
                     {movie.title}
                 </h3>
                 <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 font-medium">
-                    <span>{releaseYear || 'Film'}</span>
+                    <span>{releaseYear || 'Movie'}</span>
                     <span className="uppercase text-[9px] tracking-wider text-zinc-600 dark:text-zinc-300 font-bold bg-zinc-200/80 dark:bg-zinc-800/90 px-1.5 py-0.5 rounded border border-zinc-300/60 dark:border-white/5">
-                        {isMovie ? 'Film' : 'Series'}
+                        {isMovie ? 'Movie' : 'Series'}
                     </span>
                 </div>
             </div>

@@ -53,7 +53,7 @@ function Search({ searchParams: initialParams }: SearchProps = {}) {
                 setTotalPages(totalPages);
             } catch (error) {
                 if (!active) return;
-                setError('Hasil pencarian gagal dimuat. Silakan coba lagi.');
+                setError('Failed to load search results. Please try again.');
             } finally {
                 if (active) setLoading(false);
             }
@@ -98,15 +98,15 @@ function Search({ searchParams: initialParams }: SearchProps = {}) {
                 <div className="flex items-end justify-between mb-8 pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
                     <div>
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                            Hasil Pencarian &ldquo;{searchQuery}&rdquo;
+                            Search Results for &ldquo;{searchQuery}&rdquo;
                         </h1>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                            Ditemukan {filteredMovies.length > 0 ? `${filteredMovies.length} judul pada halaman ini` : 'tidak ada judul'}
+                            {filteredMovies.length > 0 ? `${filteredMovies.length} title(s) found on this page` : 'No titles found'}
                         </p>
                     </div>
                     {totalPages > 1 && (
                         <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                            Hal {currentPage} / {totalPages}
+                            Page {currentPage} of {totalPages}
                         </span>
                     )}
                 </div>
@@ -119,7 +119,7 @@ function Search({ searchParams: initialParams }: SearchProps = {}) {
                     </div>
                 ) : filteredMovies.length === 0 ? (
                     <div className="text-center py-24 text-zinc-500 dark:text-zinc-400">
-                        <p className="text-sm">Tidak ada film atau serial yang cocok dengan kata kunci &ldquo;{searchQuery}&rdquo;.</p>
+                        <p className="text-sm">No movies or series found matching &ldquo;{searchQuery}&rdquo;.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 w-full">
@@ -138,7 +138,7 @@ function Search({ searchParams: initialParams }: SearchProps = {}) {
                                 disabled={currentPage === 1}
                                 onClick={() => handlePageChange(currentPage - 1)}
                             >
-                                Sebelumnya
+                                Previous
                             </button>
                             {start > 1 && (
                                 <>
@@ -176,7 +176,7 @@ function Search({ searchParams: initialParams }: SearchProps = {}) {
                                 disabled={currentPage === totalPages}
                                 onClick={() => handlePageChange(currentPage + 1)}
                             >
-                                Selanjutnya
+                                Next
                             </button>
                         </nav>
                     </div>

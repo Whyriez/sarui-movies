@@ -1,148 +1,279 @@
-'use client'
-import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import ThemeToggle from "./ui/ThemeToggle";
-import { useRouter, useSearchParams } from 'next/navigation';
+'use client';
+
+import React, { Suspense, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { ChevronDown, KeyRound, Menu, Search, X } from 'lucide-react';
+import ThemeToggle from './ui/ThemeToggle';
+import {
+  isLicenseValid,
+  getStoredLicense,
+  getRemainingDemoSeconds,
+  formatDuration,
+  type LicenseData,
+} from '@/lib/license';
+import { LicenseModal } from './ui/LicenseModal';
+
+const movieLinks = [
+  { label: 'Trending', href: '/trending' },
+  { label: 'Popular', href: '/popular' },
+  { label: 'Now Playing', href: '/now_playing' },
+  { label: 'Top Rated', href: '/top_rated' },
+  { label: 'Upcoming', href: '/upcoming' },
+];
+const seriesLinks = [
+  { label: 'Trending Series', href: '/trending/tv' },
+  { label: 'Popular Series', href: '/popular/tv' },
+  { label: 'Top Rated Series', href: '/top_rated/tv' },
+  { label: 'Airing Today', href: '/airing_today' },
+  { label: 'On the Air', href: '/on_the_air' },
+];
+
+type MenuName = 'movies' | 'series' | null;
+
+function Brand() {
+  return (
+    <Link
+      href="/"
+      aria-label="SaruiMov — Home"
+      className="inline-flex shrink-0 items-center whitespace-nowrap transition-opacity duration-200 hover:opacity-80"
+    >
+      <span className="text-[21px] font-extrabold leading-none tracking-[-0.045em] text-zinc-950 dark:text-white sm:text-[24px]">
+        Sarui<span className="text-[#e0464f]">Mov</span>
+      </span>
+    </Link>
+  );
+}
 
 function NavbarContent() {
-    const searchParams = useSearchParams();
-    const router = useRouter();
-    const [searchQuery, setSearchQuery] = useState('');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const headerRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [openMenu, setOpenMenu] = useState<MenuName>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [license, setLicense] = useState<LicenseData | null>(null);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
-    const handleInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchQuery(event.target.value);
+  useEffect(() => {
+    setSearchQuery(searchParams.get('query') ?? '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    setMobileOpen(false);
+    setOpenMenu(null);
+    setMobileSearchOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    setHydrated(true);
+    const refresh = () => {
+      if (!isLicenseValid()) {
+        setLicense(null);
+        setRemainingSeconds(null);
+        return;
+      }
+      const current = getStoredLicense();
+      setLicense(current);
+      setRemainingSeconds(current?.type === 'demo' ? getRemainingDemoSeconds() : null);
     };
-
-    useEffect(() => {
-        const query = searchParams.get('query');
-        setSearchQuery(query ?? '');
-    }, [searchParams]);
-
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
-        if (event.key === 'Enter') {
-            if (searchQuery.trim()) {
-                router.push(`/search?page=1&query=${encodeURIComponent(searchQuery.trim())}`);
-            }
-        }
+    refresh();
+    const interval = window.setInterval(refresh, 2000);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('storage', refresh);
     };
+  }, []);
 
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
+        setOpenMenu(null);
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setOpenMenu(null);
+        setMobileOpen(false);
+        setMobileSearchOpen(false);
+      }
+      const target = event.target as HTMLElement | null;
+      const typing = target?.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target?.tagName ?? '');
+      if (!typing && (event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k'))) {
+        event.preventDefault();
+        setMobileSearchOpen(true);
+        window.requestAnimationFrame(() => searchInputRef.current?.focus());
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, []);
+
+  const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    if (!query) return;
+    setMobileSearchOpen(false);
+    setMobileOpen(false);
+    router.push(`/search?page=1&query=${encodeURIComponent(query)}`);
+  };
+
+  const toggleMenu = (name: Exclude<MenuName, null>) => {
+    setOpenMenu((current) => (current === name ? null : name));
+  };
+
+  const linkClass = (active: boolean) =>
+    `inline-flex h-9 items-center px-2 text-[13px] font-medium transition-colors ${
+      active
+        ? 'text-zinc-950 dark:text-white'
+        : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white'
+    }`;
+
+  const renderDropdown = (name: Exclude<MenuName, null>, label: string, links: typeof movieLinks) => {
+    const active = links.some((item) => pathname === item.href);
     return (
-        <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800/60 transition-colors duration-200">
-            <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 flex items-center justify-between gap-3">
-                {/* Brand & Mobile Menu */}
-                <div className="flex items-center gap-2 sm:gap-4">
-                    {/* Mobile Hamburger Dropdown */}
-                    <div className="dropdown lg:hidden">
-                        <div tabIndex={0} role="button" className="btn btn-ghost btn-sm btn-square text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white" aria-label="Menu">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7" />
-                            </svg>
-                        </div>
-                        <ul tabIndex={0} className="menu menu-sm dropdown-content bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-2xl z-[60] mt-3 w-64 p-3 shadow-2xl space-y-1">
-                            <li><Link href="/" className="font-semibold text-zinc-900 dark:text-white hover:text-rose-600 dark:hover:text-rose-400">Beranda</Link></li>
-                            <li className="menu-title pt-3 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Movies</li>
-                            <li><Link href="/trending" className="hover:text-zinc-900 dark:hover:text-white">Trending Movies</Link></li>
-                            <li><Link href="/popular" className="hover:text-zinc-900 dark:hover:text-white">Popular Movies</Link></li>
-                            <li><Link href="/now_playing" className="hover:text-zinc-900 dark:hover:text-white">Now Playing</Link></li>
-                            <li><Link href="/top_rated" className="hover:text-zinc-900 dark:hover:text-white">Top Rated</Link></li>
-                            <li><Link href="/upcoming" className="hover:text-zinc-900 dark:hover:text-white">Upcoming</Link></li>
-                            
-                            <li className="menu-title pt-3 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">TV Series</li>
-                            <li><Link href="/trending/tv" className="hover:text-zinc-900 dark:hover:text-white">Trending Series</Link></li>
-                            <li><Link href="/popular/tv" className="hover:text-zinc-900 dark:hover:text-white">Popular Series</Link></li>
-                            <li><Link href="/top_rated/tv" className="hover:text-zinc-900 dark:hover:text-white">Top Rated Series</Link></li>
-                            <li><Link href="/airing_today" className="hover:text-zinc-900 dark:hover:text-white">Airing Today</Link></li>
-                            <li><Link href="/on_the_air" className="hover:text-zinc-900 dark:hover:text-white">On The Air</Link></li>
-                            
-                            <li className="menu-title pt-3 text-[11px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Spesial</li>
-                            <li><Link href="/anime" className="hover:text-zinc-900 dark:hover:text-white">Anime Series</Link></li>
-                        </ul>
-                    </div>
+      <div className="relative" key={name}>
+        <button
+          type="button"
+          aria-haspopup="menu"
+          aria-expanded={openMenu === name}
+          onClick={() => toggleMenu(name)}
+          className={`${linkClass(active)} gap-1.5`}
+        >
+          {label}
+          <ChevronDown size={13} strokeWidth={1.7} className={`transition-transform ${openMenu === name ? 'rotate-180' : ''}`} />
+        </button>
+        {openMenu === name && (
+          <div className="absolute left-0 top-full z-[60] mt-3 w-52 border border-zinc-200 bg-white p-1.5 shadow-[0_12px_42px_rgba(0,0,0,0.12)] dark:border-white/10 dark:bg-[#151515] dark:shadow-[0_12px_42px_rgba(0,0,0,0.45)]" role="menu">
+            {links.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                onClick={() => setOpenMenu(null)}
+                className={`block px-3 py-2.5 text-[13px] transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06] ${pathname === item.href ? 'text-zinc-950 dark:text-white' : 'text-zinc-600 dark:text-zinc-400'}`}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
-                    {/* Logo */}
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <div className="w-8 h-8 rounded-lg bg-rose-600 flex items-center justify-center font-black text-white text-base shadow-lg shadow-rose-600/30 group-hover:scale-105 transition-transform">
-                            S
-                        </div>
-                        <span className="font-black text-lg sm:text-xl tracking-wider text-zinc-900 dark:text-white">
-                            SARUI<span className="text-rose-500">MOV</span>
-                        </span>
-                    </Link>
-
-                    {/* Desktop Navigation */}
-                    <div className="hidden lg:flex items-center gap-1 ml-4 text-sm font-medium text-zinc-600 dark:text-zinc-400">
-                        <Link href="/" className="px-3 py-1.5 rounded-lg hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
-                            Beranda
-                        </Link>
-                        
-                        {/* Movies Dropdown */}
-                        <div className="dropdown dropdown-hover">
-                            <div tabIndex={0} role="button" className="px-3 py-1.5 rounded-lg hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors flex items-center gap-1 cursor-pointer">
-                                <span>Film</span>
-                                <svg className="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl w-48 text-zinc-700 dark:text-zinc-300">
-                                <li><Link href="/trending" className="hover:text-zinc-900 dark:hover:text-white">Trending</Link></li>
-                                <li><Link href="/popular" className="hover:text-zinc-900 dark:hover:text-white">Popular</Link></li>
-                                <li><Link href="/now_playing" className="hover:text-zinc-900 dark:hover:text-white">Now Playing</Link></li>
-                                <li><Link href="/top_rated" className="hover:text-zinc-900 dark:hover:text-white">Top Rated</Link></li>
-                                <li><Link href="/upcoming" className="hover:text-zinc-900 dark:hover:text-white">Upcoming</Link></li>
-                            </ul>
-                        </div>
-
-                        {/* TV Series Dropdown */}
-                        <div className="dropdown dropdown-hover">
-                            <div tabIndex={0} role="button" className="px-3 py-1.5 rounded-lg hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors flex items-center gap-1 cursor-pointer">
-                                <span>Serial TV</span>
-                                <svg className="w-3.5 h-3.5 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
-                            <ul tabIndex={0} className="dropdown-content z-50 menu p-2 shadow-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl w-48 text-zinc-700 dark:text-zinc-300">
-                                <li><Link href="/trending/tv" className="hover:text-zinc-900 dark:hover:text-white">Trending Series</Link></li>
-                                <li><Link href="/popular/tv" className="hover:text-zinc-900 dark:hover:text-white">Popular Series</Link></li>
-                                <li><Link href="/top_rated/tv" className="hover:text-zinc-900 dark:hover:text-white">Top Rated Series</Link></li>
-                                <li><Link href="/airing_today" className="hover:text-zinc-900 dark:hover:text-white">Airing Today</Link></li>
-                                <li><Link href="/on_the_air" className="hover:text-zinc-900 dark:hover:text-white">On The Air</Link></li>
-                            </ul>
-                        </div>
-
-                        <Link href="/anime" className="px-3 py-1.5 rounded-lg hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors">
-                            Anime
-                        </Link>
-                    </div>
-                </div>
-
-                {/* Search Bar & Theme */}
-                <div className="flex items-center gap-2 sm:gap-3">
-                    <div className="relative flex items-center">
-                        <svg className="w-3.5 h-3.5 text-zinc-400 absolute left-3 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                        <input
-                            type="text"
-                            placeholder="Cari film, serial..."
-                            className="w-36 xs:w-48 sm:w-60 md:w-72 bg-zinc-100 dark:bg-zinc-900/90 border border-zinc-200 dark:border-zinc-800 text-zinc-900 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-500 text-xs sm:text-sm rounded-full pl-9 pr-3 py-1.5 focus:outline-none focus:border-rose-500/70 focus:ring-1 focus:ring-rose-500/50 transition-all shadow-inner"
-                            value={searchQuery}
-                            onChange={handleInputChange}
-                            onKeyDown={handleKeyDown}
-                        />
-                    </div>
-                    <ThemeToggle />
-                </div>
+  return (
+    <>
+      <header ref={headerRef} className="fixed inset-x-0 top-0 z-50 border-b border-zinc-200/80 bg-white/95 text-zinc-900 backdrop-blur-md dark:border-white/[0.08] dark:bg-[#09090b]/95 dark:text-white">
+        <div className="mx-auto flex h-[68px] w-full max-w-7xl items-center gap-5 px-5 sm:px-8 lg:px-10">
+          <button
+            type="button"
+            aria-label={mobileOpen ? 'Close navigation' : 'Open navigation'}
+            aria-expanded={mobileOpen}
+            onClick={() => { setMobileOpen((v) => !v); setMobileSearchOpen(false); }}
+            className="inline-flex h-10 w-9 shrink-0 items-center justify-center text-zinc-700 dark:text-zinc-200 lg:hidden"
+          >
+            {mobileOpen ? <X size={21} strokeWidth={1.6} /> : <Menu size={21} strokeWidth={1.6} />}
+          </button>
+          <Brand />
+          <nav aria-label="Primary navigation" className="ml-5 hidden items-center gap-5 lg:flex">
+            <Link href="/" className={linkClass(pathname === '/')}>Home</Link>
+            {renderDropdown('movies', 'Movies', movieLinks)}
+            {renderDropdown('series', 'TV Series', seriesLinks)}
+            <Link href="/anime" className={linkClass(pathname === '/anime')}>Anime</Link>
+          </nav>
+          <div className="ml-auto flex min-w-0 items-center gap-2 sm:gap-3">
+            <form onSubmit={submitSearch} role="search" className="relative hidden md:block">
+              <Search size={16} strokeWidth={1.7} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                ref={searchInputRef}
+                type="search"
+                aria-label="Search movies and TV series"
+                placeholder="Search titles"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="h-9 w-44 border border-zinc-200 bg-zinc-50 pl-9 pr-3 text-[13px] text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-zinc-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white dark:focus:border-white/30 xl:w-56"
+              />
+            </form>
+            <button
+              type="button"
+              aria-label="Open search"
+              onClick={() => { setMobileSearchOpen((v) => !v); setMobileOpen(false); window.requestAnimationFrame(() => searchInputRef.current?.focus()); }}
+              className="inline-flex h-9 w-9 items-center justify-center text-zinc-600 dark:text-zinc-300 md:hidden"
+            >
+              <Search size={19} strokeWidth={1.7} />
+            </button>
+            <ThemeToggle />
+            {hydrated && (
+              <button
+                type="button"
+                onClick={() => setShowLicenseModal(true)}
+                aria-label="Manage streaming license"
+                title={license?.type === 'master' ? 'Owner access' : license?.type === 'demo' ? 'Demo access' : 'Activate access'}
+                className="inline-flex h-9 min-w-9 items-center justify-center gap-2 border border-zinc-200 px-2.5 text-[12px] font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-950 dark:border-white/10 dark:text-zinc-300 dark:hover:border-white/30 dark:hover:text-white sm:px-3"
+              >
+                <KeyRound size={15} strokeWidth={1.6} />
+                <span className="hidden sm:inline">{license?.type === 'master' ? 'Owner' : license?.type === 'demo' ? (remainingSeconds !== null ? formatDuration(remainingSeconds) : 'Demo') : 'Access'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+        {mobileSearchOpen && (
+          <form onSubmit={submitSearch} role="search" className="border-t border-zinc-200 px-5 py-3 dark:border-white/10 md:hidden">
+            <input
+              ref={searchInputRef}
+              autoFocus
+              type="search"
+              aria-label="Search movies and TV series"
+              placeholder="Search movies and series…"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="h-11 w-full border border-zinc-200 bg-zinc-50 px-3 text-sm outline-none focus:border-zinc-400 dark:border-white/10 dark:bg-[#171719] dark:focus:border-white/30"
+            />
+          </form>
+        )}
+        {mobileOpen && (
+          <nav aria-label="Mobile navigation" className="max-h-[calc(100dvh-68px)] overflow-y-auto border-t border-zinc-200 bg-white px-5 py-5 dark:border-white/10 dark:bg-[#09090b] lg:hidden">
+            <Link href="/" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium">Home</Link>
+            <div className="mt-5 grid grid-cols-2 gap-6">
+              <div>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Movies</p>
+                {movieLinks.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="block py-2 text-[13px] text-zinc-600 dark:text-zinc-300">{item.label}</Link>)}
+              </div>
+              <div>
+                <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">TV Series</p>
+                {seriesLinks.map((item) => <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="block py-2 text-[13px] text-zinc-600 dark:text-zinc-300">{item.label}</Link>)}
+                <Link href="/anime" onClick={() => setMobileOpen(false)} className="mt-3 block py-2 text-[13px] font-medium">Anime</Link>
+              </div>
             </div>
-        </nav>
-    );
+          </nav>
+        )}
+      </header>
+      <LicenseModal
+        isOpen={showLicenseModal}
+        onClose={() => setShowLicenseModal(false)}
+        onSuccess={(newLicense) => { setLicense(newLicense); setShowLicenseModal(false); }}
+      />
+    </>
+  );
 }
 
-function Navbar() {
-    return (
-        <Suspense fallback={<div className="fixed top-0 left-0 right-0 h-16 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800/60 z-50"></div>}>
-            <NavbarContent />
-        </Suspense>
-    );
+export default function Navbar() {
+  return (
+    <Suspense fallback={<div className="fixed inset-x-0 top-0 z-50 h-[68px] border-b border-zinc-200 bg-white dark:border-white/10 dark:bg-[#09090b]" />}>
+      <NavbarContent />
+    </Suspense>
+  );
 }
-
-export default Navbar;

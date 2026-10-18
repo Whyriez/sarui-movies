@@ -3,7 +3,7 @@ import { getMediaTitle, getOverviewText, MediaType, TmdbMedia } from './tmdb-pol
 
 export async function fetchTmdb<T>(path: string, params: Record<string, string> = {}): Promise<T> {
     const response = await fetch(`/api/tmdb/${path}?${new URLSearchParams(params)}`);
-    if (!response.ok) throw new Error('Data gagal dimuat. Silakan coba lagi.');
+    if (!response.ok) throw new Error('Failed to load data. Please try again.');
     return response.json();
 }
 

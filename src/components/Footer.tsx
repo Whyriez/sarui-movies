@@ -1,70 +1,127 @@
+
 import Link from 'next/link';
 
-function Footer() {
+const footerLinks = [
+    {
+        title: 'Explore',
+        links: [
+            { label: 'Trending', href: '/trending' },
+            { label: 'Popular', href: '/popular' },
+            { label: 'Top Rated', href: '/top_rated' },
+            { label: 'Now Playing', href: '/now_playing' },
+            { label: 'Upcoming', href: '/upcoming' },
+        ],
+    },
+    {
+        title: 'TV & Series',
+        links: [
+            { label: 'Trending Series', href: '/trending/tv' },
+            { label: 'Popular Series', href: '/popular/tv' },
+            { label: 'Top Rated', href: '/top_rated/tv' },
+            { label: 'Airing Today', href: '/airing_today' },
+            { label: 'Anime', href: '/anime' },
+        ],
+    },
+];
+
+export default function Footer() {
     return (
-        <footer className="bg-zinc-100 dark:bg-[#09090b] text-zinc-600 dark:text-zinc-400 border-t border-zinc-200 dark:border-zinc-900 mt-auto transition-colors duration-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-                    {/* Brand Info */}
-                    <div className="sm:col-span-2 space-y-3">
-                        <Link href="/" className="flex items-center gap-2 inline-flex">
-                            <div className="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center font-black text-white text-sm shadow-md shadow-rose-600/30">
-                                S
-                            </div>
-                            <span className="font-black text-xl tracking-wider text-zinc-900 dark:text-white">
-                                SARUI<span className="text-rose-500">MOV</span>
+        <footer className="mt-auto border-t border-zinc-200 bg-white text-zinc-900 transition-colors dark:border-white/[0.08] dark:bg-[#09090b] dark:text-white">
+            <div className="mx-auto w-full max-w-7xl px-6 pt-14 pb-7 sm:px-8 sm:pt-20 lg:px-10">
+                <div className="grid gap-14 pb-16 md:grid-cols-[minmax(0,1fr)_auto] md:gap-20 lg:pb-24">
+                    {/* Brand */}
+                    <div className="max-w-md">
+
+                        <Link
+                            href="/"
+                            aria-label="SaruiMov Home"
+                            className="inline-flex shrink-0 items-center transition-opacity duration-200 hover:opacity-80"
+                        >
+                            <span className="text-[22px] sm:text-[24px] font-extrabold tracking-tight leading-none text-zinc-950 dark:text-white">
+                                Sarui
+                                <span className="text-[#e0464f]">Mov</span>
                             </span>
                         </Link>
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 max-w-sm leading-relaxed">
-                            Platform streaming film dan serial TV dengan tampilan sinematik modern, responsif, dan dukungan multi-server streaming berkualitas tinggi.
-                        </p>
-                        <p className="text-[11px] text-zinc-500 dark:text-zinc-500 leading-relaxed max-w-md">
-                            Disclaimer: SaruiMov does not host any media files on its servers. All media is provided by non-affiliated third party providers.
+
+
+                        <p className="mt-5 max-w-[310px] text-[14px] leading-[1.8] text-zinc-500 dark:text-zinc-400">
+                            A space to discover, explore, and enjoy
+                            movies and television.
                         </p>
                     </div>
 
-                    {/* Movie Categories */}
-                    <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-300 mb-3">
-                            Film &amp; Movies
-                        </h4>
-                        <div className="flex flex-col space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                            <Link href="/trending" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Trending Movies</Link>
-                            <Link href="/popular" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Popular Movies</Link>
-                            <Link href="/top_rated" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Top Rated Movies</Link>
-                            <Link href="/now_playing" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Now Playing</Link>
-                            <Link href="/upcoming" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Upcoming</Link>
-                        </div>
-                    </div>
+                    {/* Navigation */}
+                    <nav
+                        aria-label="Footer navigation"
+                        className="grid grid-cols-2 gap-x-10 gap-y-10 sm:gap-x-20 lg:gap-x-28"
+                    >
+                        {footerLinks.map((group) => (
+                            <div key={group.title}>
+                                <h2 className="mb-6 text-[12px] font-medium tracking-[-0.01em] text-zinc-950 dark:text-zinc-100">
+                                    {group.title}
+                                </h2>
 
-                    {/* TV & Anime Categories */}
-                    <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-900 dark:text-zinc-300 mb-3">
-                            Series &amp; Anime
-                        </h4>
-                        <div className="flex flex-col space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                            <Link href="/trending/tv" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Trending Series</Link>
-                            <Link href="/popular/tv" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Popular Series</Link>
-                            <Link href="/top_rated/tv" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Top Rated Series</Link>
-                            <Link href="/airing_today" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Airing Today</Link>
-                            <Link href="/anime" className="hover:text-zinc-900 dark:hover:text-white transition-colors">Anime Series</Link>
-                        </div>
-                    </div>
+                                <ul className="space-y-3.5">
+                                    {group.links.map((link) => (
+                                        <li key={link.href}>
+                                            <Link
+                                                href={link.href}
+                                                className="text-[13px] leading-6 text-zinc-500 transition-colors duration-200 hover:text-zinc-950 focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-rose-500 dark:text-zinc-500 dark:hover:text-white"
+                                            >
+                                                {link.label}
+                                            </Link>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </nav>
                 </div>
 
-                <div className="pt-6 border-t border-zinc-200 dark:border-zinc-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-zinc-500 dark:text-zinc-400">
-                    <p>© {new Date().getFullYear()} SaruiMov. All rights reserved.</p>
-                    <div className="flex items-center gap-4 text-zinc-500 dark:text-zinc-400">
-                        <Link href="/trending" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Beranda</Link>
-                        <span>•</span>
-                        <a href="https://subsource.net" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">Subtitles</a>
-                        <span>•</span>
-                        <a href="https://www.themoviedb.org" target="_blank" rel="noopener noreferrer" className="hover:text-zinc-900 dark:hover:text-zinc-300 transition-colors">TMDB</a>
+                {/* Disclaimer */}
+                <div className="border-t border-zinc-200 py-7 dark:border-white/[0.08]">
+                    <p className="max-w-2xl text-[12px] leading-[1.85] text-zinc-500 dark:text-zinc-500">
+                        SaruiMov does not host media files on its servers.
+                        Content is provided through independent third-party
+                        services that are not affiliated with SaruiMov.
+                    </p>
+                </div>
+
+                {/* Bottom */}
+                <div className="flex flex-col gap-5 border-t border-zinc-200 pt-7 sm:flex-row sm:items-center sm:justify-between dark:border-white/[0.08]">
+                    <p className="text-[12px] text-zinc-500">
+                        © {new Date().getFullYear()} SaruiMov.
+                        All rights reserved.
+                    </p>
+
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                        <Link
+                            href="/"
+                            className="text-[12px] text-zinc-500 transition-colors hover:text-zinc-950 dark:hover:text-white"
+                        >
+                            Home
+                        </Link>
+
+                        <a
+                            href="https://subsource.net"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[12px] text-zinc-500 transition-colors hover:text-zinc-950 dark:hover:text-white"
+                        >
+                            Subtitles
+                        </a>
+
+                        <a
+                            href="https://www.themoviedb.org"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[12px] text-zinc-500 transition-colors hover:text-zinc-950 dark:hover:text-white"
+                        >
+                            TMDB
+                        </a>
                     </div>
                 </div>
             </div>
         </footer>
     );
 }
-
-export default Footer;

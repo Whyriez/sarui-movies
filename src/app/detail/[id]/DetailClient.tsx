@@ -74,7 +74,7 @@ const Detail = ({ movieDetails, trailerKey }: { movieDetails: MovieDetails; trai
                         {/* Meta Badges */}
                         <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-3">
                             <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20 uppercase tracking-wider">
-                                Film
+                                Movie
                             </span>
                             {year && (
                                 <span className="text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-200/80 dark:bg-zinc-900/80 px-2.5 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-800">
@@ -117,7 +117,7 @@ const Detail = ({ movieDetails, trailerKey }: { movieDetails: MovieDetails; trai
                         {/* Additional Metadata */}
                         <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1 my-3">
                             {movieDetails.release_date && (
-                                <p><strong className="text-zinc-800 dark:text-zinc-300">Tanggal Rilis:</strong> {movieDetails.release_date}</p>
+                                <p><strong className="text-zinc-800 dark:text-zinc-300">Release Date:</strong> {movieDetails.release_date}</p>
                             )}
                         </div>
 
@@ -130,7 +130,7 @@ const Detail = ({ movieDetails, trailerKey }: { movieDetails: MovieDetails; trai
                                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                                     <path d="M8 5v14l11-7z" />
                                 </svg>
-                                <span>Putar Film</span>
+                                <span>Play Movie</span>
                             </button>
                             <button
                                 className="bg-white hover:bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all flex items-center gap-2 shadow-sm"

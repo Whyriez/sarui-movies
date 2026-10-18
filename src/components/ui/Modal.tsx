@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Captions, Check, ChevronDown, RefreshCw, Shield, X } from 'lucide-react';
+import { Captions, Check, ChevronDown, Key, RefreshCw, Shield, Sparkles, X } from 'lucide-react';
+import { isLicenseValid, getStoredLicense, getRemainingDemoSeconds, formatDuration, LicenseData } from '@/lib/license';
+import { LicenseModal } from './LicenseModal';
 
 export interface ModalProps {
   id?: string;
@@ -187,6 +189,10 @@ const Modal: React.FC<ModalProps> = ({
   const [isUploadingSub, setIsUploadingSub] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [restrictPopups, setRestrictPopups] = useState(true);
+  const [hasValidLicense, setHasValidLicense] = useState(false);
+  const [licenseData, setLicenseData] = useState<LicenseData | null>(null);
+  const [remainingDemoSeconds, setRemainingDemoSeconds] = useState<number | null>(null);
+  const [showLicensePopup, setShowLicensePopup] = useState(false);
 
   const isTrailer = contentType === 'trailer';
   const isSeries = contentType === 'series';
@@ -243,6 +249,34 @@ const Modal: React.FC<ModalProps> = ({
     setHasFrameError(false);
   }, [isOpen, embedUrl, reloadKey]);
 
+  // Check stored license when modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    const valid = isLicenseValid();
+    setHasValidLicense(valid);
+    const current = getStoredLicense();
+    setLicenseData(current);
+    if (current?.type === 'demo') {
+      setRemainingDemoSeconds(getRemainingDemoSeconds());
+    } else {
+      setRemainingDemoSeconds(null);
+    }
+  }, [isOpen]);
+
+  // Active countdown for demo license
+  useEffect(() => {
+    if (!isOpen || !hasValidLicense || licenseData?.type !== 'demo') return;
+    const interval = setInterval(() => {
+      const remaining = getRemainingDemoSeconds();
+      setRemainingDemoSeconds(remaining);
+      if (remaining !== null && remaining <= 0) {
+        setHasValidLicense(false);
+        setRemainingDemoSeconds(0);
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isOpen, hasValidLicense, licenseData]);
+
   const requestClose = () => {
     if (onClose) onClose();
     else dialogRef.current?.close();
@@ -261,11 +295,11 @@ const Modal: React.FC<ModalProps> = ({
 
     setUploadError('');
     if (!/\.(srt|vtt)$/i.test(file.name)) {
-      setUploadError('Gunakan file subtitle .srt atau .vtt.');
+      setUploadError('Please use a .srt or .vtt subtitle file.');
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Ukuran subtitle maksimal 2 MB.');
+      setUploadError('Maximum subtitle file size is 2 MB.');
       return;
     }
 
@@ -280,12 +314,12 @@ const Modal: React.FC<ModalProps> = ({
       });
       const data: { url?: unknown; error?: string } = await response.json();
       if (!response.ok || typeof data.url !== 'string' || !data.url) {
-        throw new Error(data.error || 'File tidak dapat diunggah.');
+        throw new Error(data.error || 'Failed to upload file.');
       }
       setSubtitleUrl(data.url);
       setSubtitleFileName(file.name);
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : 'Upload subtitle gagal.');
+      setUploadError(error instanceof Error ? error.message : 'Subtitle upload failed.');
     } finally {
       setIsUploadingSub(false);
     }
@@ -319,10 +353,10 @@ const Modal: React.FC<ModalProps> = ({
               ? 'Trailer'
               : isSeries && season && episode != null
                 ? `Season ${season} · Episode ${episode}`
-                : 'Sedang menonton'}
+                : 'Now watching'}
           </p>
         </div>
-        <button className={controlButton} type="button" onClick={requestClose} aria-label="Tutup pemutar">
+        <button className={controlButton} type="button" onClick={requestClose} aria-label="Close player">
           <X size={20} strokeWidth={1.7} />
         </button>
       </header>
@@ -330,53 +364,72 @@ const Modal: React.FC<ModalProps> = ({
       {/* The film should take the largest share of visual attention. */}
       <section className="relative flex min-h-0 flex-1 items-center justify-center bg-black sm:flex-none">
         <div className="relative aspect-video w-full max-h-[calc(100dvh-176px)] overflow-hidden bg-black sm:max-h-[min(72dvh,760px)]">
-          {isOpen && embedUrl && (
-            <iframe
-              key={`${embedUrl}-${reloadKey}-${sandbox || 'compatible'}`}
-              src={embedUrl}
-              title={`${title} — ${isTrailer ? 'trailer' : 'video'}`}
-              className="absolute inset-0 h-full w-full border-0"
-              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
-              allowFullScreen
-              sandbox={sandbox}
-              referrerPolicy={
-                isTrailer ? 'strict-origin-when-cross-origin' : activeServer.referrerPolicy
-              }
-              onLoad={() => {
-                setIsLoading(false);
-                setHasFrameError(false);
-              }}
-              onError={() => {
-                setIsLoading(false);
-                setHasFrameError(true);
-              }}
-            />
-          )}
-
-          {isOpen && embedUrl && isLoading && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#070707]" role="status" aria-label="Memuat video">
-              <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/15 border-t-white/75" />
+          {!isTrailer && !hasValidLicense ? (
+            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/95 overflow-y-auto p-4">
+              <LicenseModal
+                inline
+                isOpen={true}
+                onSuccess={(newLic) => {
+                  setHasValidLicense(true);
+                  setLicenseData(newLic);
+                  if (newLic.type === 'demo') {
+                    setRemainingDemoSeconds(getRemainingDemoSeconds());
+                  }
+                  reloadPlayer();
+                }}
+              />
             </div>
-          )}
-
-          {(!embedUrl || hasFrameError) && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
-              <p className="text-[15px] font-medium text-white/85">
-                {isTrailer ? 'Trailer tidak tersedia' : 'Video tidak dapat ditampilkan'}
-              </p>
-              <p className="max-w-xs text-[13px] leading-6 text-white/45">
-                {isTrailer ? 'Trailer belum tersedia untuk judul ini.' : 'Coba muat ulang atau pilih server lain.'}
-              </p>
-              {embedUrl && (
-                <button
-                  type="button"
-                  onClick={reloadPlayer}
-                  className="mt-2 border-b border-white/40 pb-1 text-[13px] text-white/85 hover:border-white"
-                >
-                  Coba lagi
-                </button>
+          ) : (
+            <>
+              {isOpen && embedUrl && (
+                <iframe
+                  key={`${embedUrl}-${reloadKey}-${sandbox || 'compatible'}`}
+                  src={embedUrl}
+                  title={`${title} — ${isTrailer ? 'trailer' : 'video'}`}
+                  className="absolute inset-0 h-full w-full border-0"
+                  allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
+                  allowFullScreen
+                  sandbox={sandbox}
+                  referrerPolicy={
+                    isTrailer ? 'strict-origin-when-cross-origin' : activeServer.referrerPolicy
+                  }
+                  onLoad={() => {
+                    setIsLoading(false);
+                    setHasFrameError(false);
+                  }}
+                  onError={() => {
+                    setIsLoading(false);
+                    setHasFrameError(true);
+                  }}
+                />
               )}
-            </div>
+
+              {isOpen && embedUrl && isLoading && (
+                <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#070707]" role="status" aria-label="Loading video">
+                  <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/15 border-t-white/75" />
+                </div>
+              )}
+
+              {(!embedUrl || hasFrameError) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+                  <p className="text-[15px] font-medium text-white/85">
+                    {isTrailer ? 'Trailer not available' : 'Video cannot be displayed'}
+                  </p>
+                  <p className="max-w-xs text-[13px] leading-6 text-white/45">
+                    {isTrailer ? 'Trailer is not yet available for this title.' : 'Try reloading or select a different server.'}
+                  </p>
+                  {embedUrl && (
+                    <button
+                      type="button"
+                      onClick={reloadPlayer}
+                      className="mt-2 border-b border-white/40 pb-1 text-[13px] text-white/85 hover:border-white"
+                    >
+                      Try again
+                    </button>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </section>
@@ -403,7 +456,7 @@ const Modal: React.FC<ModalProps> = ({
                 >
                   {SERVERS.map((server) => (
                     <option key={server.id} value={server.id} disabled={server.disabled}>
-                      {server.label}{server.disabled ? ' (Tidak tersedia)' : ''}
+                      {server.label}{server.disabled ? ' (Unavailable)' : ''}
                     </option>
                   ))}
                 </select>
@@ -413,6 +466,31 @@ const Modal: React.FC<ModalProps> = ({
                   strokeWidth={1.6}
                 />
               </div>
+
+              {/* License Status Badge */}
+              {hasValidLicense && (
+                <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-white/10">
+                  {licenseData?.type === 'master' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
+                      <Key size={12} className="text-amber-400" />
+                      Master VIP
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/10 border border-rose-500/25 px-2.5 py-1 text-[11px] font-semibold text-rose-300">
+                      <Sparkles size={12} className="text-rose-400" />
+                      Demo: {remainingDemoSeconds !== null ? formatDuration(remainingDemoSeconds) : '30m'}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowLicensePopup(true)}
+                    className="text-[11px] text-zinc-400 hover:text-white underline underline-offset-4"
+                    title="Change or renew license"
+                  >
+                    Manage
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-1">
@@ -427,7 +505,7 @@ const Modal: React.FC<ModalProps> = ({
                 >
                   <Captions size={17} strokeWidth={1.6} />
                   Subtitle
-                  {subtitleUrl && <Check size={13} strokeWidth={2} aria-label="Aktif" />}
+                  {subtitleUrl && <Check size={13} strokeWidth={2} aria-label="Active" />}
                 </button>
               )}
               {activeServer.supportsSandbox && (
@@ -435,22 +513,22 @@ const Modal: React.FC<ModalProps> = ({
                   type="button"
                   aria-pressed={restrictPopups}
                   onClick={() => setRestrictPopups((value) => !value)}
-                  title="Batasi pop-up dari pemutar ini (mode kompatibilitas dapat diperlukan)"
+                  title="Block popups from this player (compatibility mode may be needed)"
                   className={`inline-flex h-10 items-center gap-2 rounded-md px-3 text-[12px] transition-colors hover:bg-white/[0.07] ${
                     restrictPopups ? 'text-white' : 'text-white/45'
                   }`}
                 >
                   <Shield size={16} strokeWidth={1.7} />
-                  <span className="hidden sm:inline">Batasi pop-up</span>
-                  <span className="sm:hidden">Proteksi</span>
+                  <span className="hidden sm:inline">Block popups</span>
+                  <span className="sm:hidden">Protection</span>
                   <span className="text-white/40">{restrictPopups ? 'On' : 'Off'}</span>
                 </button>
               )}
               <button
                 type="button"
                 className={controlButton}
-                title="Muat ulang video"
-                aria-label="Muat ulang video"
+                title="Reload video"
+                aria-label="Reload video"
                 onClick={reloadPlayer}
               >
                 <RefreshCw size={17} strokeWidth={1.7} />
@@ -462,9 +540,9 @@ const Modal: React.FC<ModalProps> = ({
             <div className="border-t border-white/[0.08] px-5 py-4 sm:px-7">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-white/90">Subtitle tambahan</p>
+                  <p className="text-[13px] font-medium text-white/90">Custom subtitle</p>
                   <p className="mt-1 truncate text-[12px] text-white/40">
-                    {subtitleFileName || 'Pilih file .srt atau .vtt untuk video ini.'}
+                    {subtitleFileName || 'Select a .srt or .vtt file for this video.'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
@@ -486,7 +564,7 @@ const Modal: React.FC<ModalProps> = ({
                         setUploadError('');
                       }}
                     >
-                      Hapus
+                      Remove
                     </button>
                   )}
                   <button
@@ -495,7 +573,7 @@ const Modal: React.FC<ModalProps> = ({
                     className="inline-flex h-9 min-w-[110px] items-center justify-center rounded-md border border-white/20 bg-white/[0.09] px-4 text-[12px] font-medium text-white transition-colors hover:bg-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-50"
                     onClick={() => fileInputRef.current?.click()}
                   >
-                    {isUploadingSub ? 'Mengunggah…' : subtitleUrl ? 'Ganti file' : 'Pilih file'}
+                    {isUploadingSub ? 'Uploading…' : subtitleUrl ? 'Change file' : 'Choose file'}
                   </button>
                 </div>
               </div>
@@ -503,6 +581,22 @@ const Modal: React.FC<ModalProps> = ({
             </div>
           )}
         </footer>
+      )}
+
+      {showLicensePopup && (
+        <LicenseModal
+          isOpen={showLicensePopup}
+          onClose={() => setShowLicensePopup(false)}
+          onSuccess={(newLic) => {
+            setHasValidLicense(true);
+            setLicenseData(newLic);
+            setShowLicensePopup(false);
+            if (newLic.type === 'demo') {
+              setRemainingDemoSeconds(getRemainingDemoSeconds());
+            }
+            reloadPlayer();
+          }}
+        />
       )}
     </dialog>
   );

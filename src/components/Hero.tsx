@@ -30,7 +30,7 @@ function Hero() {
                 setTotalPages(fetchedTotalPages);
             } catch (error) {
                 if (!active) return;
-                setError('Katalog tayangan gagal dimuat. Silakan periksa koneksi internet Anda.');
+                setError('Failed to load catalog. Please check your internet connection.');
             } finally {
                 if (active) setLoading(false);
             }
@@ -88,7 +88,7 @@ function Hero() {
         : `/detail/tv/${featured?.tmdb_id}`;
 
     return (
-        <div className="bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+        <div className="bg-zinc-50 mt-16 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
             {/* CINEMATIC SPOTLIGHT BILLBOARD */}
             <div className="relative w-full h-[65vh] sm:h-[75vh] md:h-[82vh] overflow-hidden">
                 {/* Backdrop Image */}
@@ -110,7 +110,7 @@ function Hero() {
                     <div className="max-w-2xl space-y-3">
                         <div className="flex items-center gap-2">
                             <span className="text-[11px] font-bold tracking-widest text-rose-500 uppercase bg-rose-500/10 px-2.5 py-1 rounded-md border border-rose-500/20">
-                                Spotlight Hari Ini
+                                Today&apos;s Spotlight
                             </span>
                             {featuredRating && (
                                 <span className="text-[11px] font-semibold text-amber-400 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md border border-white/10">
@@ -129,7 +129,7 @@ function Hero() {
                         </h1>
 
                         <p className="text-xs sm:text-sm md:text-base text-zinc-700 dark:text-zinc-300 line-clamp-2 sm:line-clamp-3 leading-relaxed drop-shadow max-w-xl">
-                            {featured?.details?.overview || "Nikmati streaming film dan serial TV favorit tanpa iklan dengan kualitas terbaik."}
+                            {featured?.details?.overview || "Enjoy streaming your favorite movies and TV series with high quality."}
                         </p>
 
                         <div className="flex items-center gap-3 pt-2">
@@ -141,14 +141,14 @@ function Hero() {
                                     <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                                         <path d="M8 5v14l11-7z" />
                                     </svg>
-                                    <span>Tonton Sekarang</span>
+                                    <span>Watch Now</span>
                                 </Link>
                             )}
                             <button
                                 onClick={() => catalogRef.current?.scrollIntoView({ behavior: 'smooth' })}
                                 className="bg-zinc-900/10 hover:bg-zinc-900/20 text-zinc-900 border border-zinc-900/10 dark:bg-white/10 dark:hover:bg-white/20 backdrop-blur-md dark:text-white font-medium text-xs sm:text-sm px-5 py-2.5 rounded-xl dark:border-white/10 transition-all"
                             >
-                                Jelajahi Katalog
+                                Explore Catalog
                             </button>
                         </div>
                     </div>
@@ -160,14 +160,14 @@ function Hero() {
                 <div className="flex items-end justify-between mb-6 pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
                     <div>
                         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                            Trending Sekarang
+                            Trending Now
                         </h2>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                            Pilihan film &amp; serial terpopuler hari ini
+                            Today&apos;s most popular movies &amp; series
                         </p>
                     </div>
                     <span className="text-xs text-zinc-500 dark:text-zinc-300 font-medium">
-                        Hal {currentPage} / {totalPages}
+                        Page {currentPage} of {totalPages}
                     </span>
                 </div>
 
@@ -179,7 +179,7 @@ function Hero() {
                     </div>
                 ) : movies.length === 0 ? (
                     <div className="text-center py-20 text-zinc-500 dark:text-zinc-400">
-                        <p className="text-sm">Tidak ada tayangan yang tersedia saat ini.</p>
+                        <p className="text-sm">No titles available at this time.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5">
@@ -201,7 +201,7 @@ function Hero() {
                             disabled={currentPage === 1}
                             onClick={() => handlePageChange(currentPage - 1)}
                         >
-                            Sebelumnya
+                            Previous
                         </button>
                         {start > 1 && (
                             <>
@@ -239,7 +239,7 @@ function Hero() {
                             disabled={currentPage === totalPages}
                             onClick={() => handlePageChange(currentPage + 1)}
                         >
-                            Selanjutnya
+                            Next
                         </button>
                     </nav>
                 </div>

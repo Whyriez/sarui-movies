@@ -27,7 +27,7 @@ function PopularTv() {
                 setTotalPages(fetchedTotalPages);
             } catch (error) {
                 if (!active) return;
-                setError('Data gagal dimuat. Silakan periksa koneksi internet Anda.');
+                setError('Failed to load data. Please check your internet connection.');
             } finally {
                 if (active) setLoading(false);
             }
@@ -75,11 +75,11 @@ function PopularTv() {
                             Popular Series
                         </h1>
                         <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                            Deretan serial TV paling populer dan direkomendasikan
+                            The most popular and recommended TV series
                         </p>
                     </div>
                     <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
-                        Hal {currentPage} / {totalPages}
+                        Page {currentPage} of {totalPages}
                     </span>
                 </div>
 
@@ -91,7 +91,7 @@ function PopularTv() {
                     </div>
                 ) : tv.length === 0 ? (
                     <div className="text-center py-24 text-zinc-500 dark:text-zinc-400">
-                        <p className="text-sm">Tidak ada serial TV yang tersedia saat ini.</p>
+                        <p className="text-sm">No TV series available at this time.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 w-full">
@@ -110,7 +110,7 @@ function PopularTv() {
                                 disabled={currentPage === 1}
                                 onClick={() => handlePageChange(currentPage - 1)}
                             >
-                                Sebelumnya
+                                Previous
                             </button>
                             {start > 1 && (
                                 <>
@@ -148,7 +148,7 @@ function PopularTv() {
                                 disabled={currentPage === totalPages}
                                 onClick={() => handlePageChange(currentPage + 1)}
                             >
-                                Selanjutnya
+                                Next
                             </button>
                         </nav>
                     </div>

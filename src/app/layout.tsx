@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
   title: { default: "SaruiMovie", template: "%s | SaruiMovie" },
-  description: "Nonton film dan serial TV streaming gratis tanpa iklan dengan SaruiMov",
+  description: "Watch movies and TV series streaming with SaruiMov",
 };
 
 export default function RootLayout({
@@ -17,7 +14,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" data-theme="dark" className="dark" suppressHydrationWarning>
+    <html lang="en" data-theme="dark" className="dark" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
@@ -37,7 +34,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.className} min-h-screen flex flex-col bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 antialiased selection:bg-rose-600 selection:text-white transition-colors duration-200`}>
+      <body className="font-sans min-h-screen flex flex-col bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 antialiased selection:bg-rose-600 selection:text-white transition-colors duration-200">
         <Navbar />
         <main className="flex-1">
           {children}

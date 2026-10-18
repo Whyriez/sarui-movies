@@ -67,7 +67,7 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                         {/* Meta Badges */}
                         <div className="flex items-center gap-2 flex-wrap justify-center md:justify-start mb-3">
                             <span className="text-xs font-semibold text-rose-500 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20 uppercase tracking-wider">
-                                Serial TV
+                                TV Series
                             </span>
                             {year && (
                                 <span className="text-xs text-zinc-700 dark:text-zinc-300 bg-zinc-200/80 dark:bg-zinc-900/80 px-2.5 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-800">
@@ -86,7 +86,7 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                             )}
                             {seasons && seasons.length > 0 && (
                                 <span className="text-xs text-zinc-600 dark:text-zinc-400 bg-zinc-200/70 dark:bg-zinc-900/60 px-2.5 py-0.5 rounded-full border border-zinc-300 dark:border-zinc-800">
-                                    {seasons.length} Musim
+                                    {seasons.length} {seasons.length === 1 ? 'Season' : 'Seasons'}
                                 </span>
                             )}
                         </div>
@@ -115,7 +115,7 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                         {/* Additional Metadata */}
                         <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1 my-3">
                             {tvDetails.first_air_date && (
-                                <p><strong className="text-zinc-800 dark:text-zinc-300">Tayang Perdana:</strong> {tvDetails.first_air_date}</p>
+                                <p><strong className="text-zinc-800 dark:text-zinc-300">Premiere:</strong> {tvDetails.first_air_date}</p>
                             )}
                         </div>
 
@@ -151,10 +151,10 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
-                                    Daftar Musim &amp; Episode
+                                    Seasons &amp; Episodes
                                 </h2>
                                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-                                    Pilih musim untuk melihat daftar episode lengkap dan mulai menonton
+                                    Select a season to view episodes and start watching
                                 </p>
                             </div>
                         </div>
@@ -203,7 +203,7 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                                             </div>
 
                                             <div className="mt-2 text-xs font-semibold text-rose-500 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                                                <span>Pilih Episode</span>
+                                                <span>Select Episodes</span>
                                                 <span>→</span>
                                             </div>
                                         </div>

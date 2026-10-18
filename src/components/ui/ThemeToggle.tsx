@@ -42,7 +42,7 @@ const ThemeToggle = () => {
       type="button"
       className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white flex items-center justify-center transition-all shadow-sm"
       aria-label="Toggle theme"
-      title={theme === 'dark' ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'}
+      title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
       {theme === 'dark' ? (
         <svg className="w-4 h-4 fill-current text-zinc-300" viewBox="0 0 24 24">

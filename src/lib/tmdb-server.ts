@@ -10,16 +10,16 @@ async function request<T>(path: string, params: Record<string, string> = {}): Pr
     const base = process.env.TMDB_BASE_URL ?? process.env.NEXT_PUBLIC_TMDB_BASE_URL ?? 'https://api.themoviedb.org/3';
     const token = process.env.TMDB_API_BEARER_TOKEN ?? process.env.NEXT_PUBLIC_TMDB_API_BEARER_TOKEN;
     const apiKey = process.env.TMDB_API_KEY ?? process.env.NEXT_PUBLIC_API_KEY_TMDB;
-    if (!token && !apiKey) throw new TmdbError('Konfigurasi TMDB belum tersedia.', 503);
+    if (!token && !apiKey) throw new TmdbError('TMDB configuration is not available.', 503);
     const url = new URL(`${base.replace(/\/$/, '')}/${path}`);
-    url.search = new URLSearchParams({ language: 'id-ID', ...params }).toString();
+    url.search = new URLSearchParams({ language: 'en-US', ...params }).toString();
     if (!token && apiKey) url.searchParams.set('api_key', apiKey);
     const response = await fetch(url, {
         headers: { Accept: 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         next: { revalidate: 3600 },
         signal: AbortSignal.timeout(15000),
     });
-    if (!response.ok) throw new TmdbError('Data TMDB gagal dimuat.', response.status === 404 ? 404 : 502);
+    if (!response.ok) throw new TmdbError('Failed to load TMDB data.', response.status === 404 ? 404 : 502);
     return response.json();
 }
 
@@ -74,29 +74,29 @@ async function fillCatalogOverviews(path: string, params: Record<string, string>
 }
 
 export const getSafeDetails = cache(async <T extends TmdbMedia>(type: MediaType, id: string): Promise<T> => {
-    if (!/^\d+$/.test(id)) throw new TmdbError('ID tidak valid.', 400);
+    if (!/^\d+$/.test(id)) throw new TmdbError('Invalid ID.', 400);
     const data = await request<T & { status?: string; poster_path?: string | null; release_date?: string; first_air_date?: string }>(`${type}/${id}`);
 
-    // Poster wajib ada dan valid
+    // Poster is mandatory and must be valid
     if (!isPosterValid(data.poster_path)) {
-        throw new TmdbError('Poster film tidak tersedia.', 404);
+        throw new TmdbError('Movie poster is not available.', 404);
     }
 
-    // Status harus Released untuk film, tidak boleh In Production / Post Production / Planned / Pilot untuk serial
+    // Status must be Released for movies, cannot be In Production / Post Production / Planned / Pilot for series
     if (type === 'movie') {
         if (data.status && data.status.toLowerCase() !== 'released') {
-            throw new TmdbError(`Film belum dirilis (status: ${data.status}).`, 404);
+            throw new TmdbError(`Movie has not been released yet (status: ${data.status}).`, 404);
         }
         if (data.release_date && !isDateReleased(data.release_date)) {
-            throw new TmdbError('Film belum dirilis.', 404);
+            throw new TmdbError('Movie has not been released yet.', 404);
         }
     } else if (type === 'tv') {
         const unreleasedTv = ['in production', 'post production', 'planned', 'pilot'];
         if (data.status && unreleasedTv.includes(data.status.toLowerCase())) {
-            throw new TmdbError(`Serial belum dirilis (status: ${data.status}).`, 404);
+            throw new TmdbError(`Series has not been released yet (status: ${data.status}).`, 404);
         }
         if (data.first_air_date && !isDateReleased(data.first_air_date)) {
-            throw new TmdbError('Serial belum dirilis.', 404);
+            throw new TmdbError('Series has not been released yet.', 404);
         }
     }
 
@@ -114,7 +114,7 @@ export const getVideos = cache(async (type: MediaType, id: string): Promise<Tmdb
 });
 
 export const getSafeSeason = cache(async (id: string, season: string) => {
-    if (!/^\d+$/.test(season)) throw new TmdbError('Season tidak valid.', 400);
+    if (!/^\d+$/.test(season)) throw new TmdbError('Invalid season.', 400);
     await getSafeDetails('tv', id);
     const path = `tv/${id}/season/${season}`;
     const data = await request<import('@/interface/Tv').SeasonDetails & { episodes: import('@/interface/Tv').Episode[] }>(path);
@@ -166,11 +166,13 @@ async function filterCatalog(data: TmdbList, type?: MediaType): Promise<TmdbList
 
 export async function getTmdbData(path: string, params: URLSearchParams) {
     const page = params.get('page') ?? '1';
-    if (!/^\d+$/.test(page) || Number(page) < 1 || Number(page) > 500) throw new TmdbError('Halaman tidak valid.', 400);
+    if (!/^\d+$/.test(page) || Number(page) < 1 || Number(page) > 500) throw new TmdbError('Invalid page.', 400);
     let type: MediaType | undefined;
     if (/^movie\/(popular|top_rated|now_playing|upcoming)$/.test(path)) type = 'movie';
     else if (/^tv\/(popular|top_rated|airing_today|on_the_air)$/.test(path)) type = 'tv';
     else if (/^trending\/(movie|tv)\/day$/.test(path)) type = path.split('/')[1] as MediaType;
+    else if (path === 'discover/tv') type = 'tv';
+    else if (path === 'discover/movie') type = 'movie';
     else if (path === 'search/multi') {
         const query = params.get('query')?.trim() ?? '';
         if (!query) return { results: [], page: Number(page), total_pages: 0, total_results: 0 };
@@ -185,8 +187,13 @@ export async function getTmdbData(path: string, params: URLSearchParams) {
         const [, id, , season] = path.split('/');
         const details = await getSafeSeason(id, season);
         return { ...details, videos: await getVideos('tv', id) };
-    } else throw new TmdbError('Endpoint tidak tersedia.', 404);
-    const listParams = { page, include_adult: 'true' };
+    } else throw new TmdbError('Endpoint not available.', 404);
+    const listParams: Record<string, string> = { page, include_adult: 'true' };
+    params.forEach((value, key) => {
+        if (key !== 'page' && key !== 'include_adult') {
+            listParams[key] = value;
+        }
+    });
     const data = await filterCatalog(await request<TmdbList>(path, listParams), type);
     return fillCatalogOverviews(path, listParams, data);
 }
