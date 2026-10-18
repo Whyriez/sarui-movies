@@ -7,40 +7,39 @@ import { Tv } from "@/interface/Tv";
 
 const PAGE_RANGE = 1;
 
-function AiringToday() {
+function OnTheAir() {
     const [currentPage, setCurrentPage] = useState(1);
-    const [tvSeries, setTvSeries] = useState<Tv[]>([]);
+    const [tv, setTv] = useState<Tv[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const topRatedRef = useRef<HTMLDivElement>(null);
-   
+    const onTheAirRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         let active = true;
         setLoading(true);
         setError(null);
-        const loadTvAiringToday = async () => {
+        const loadMovies = async () => {
             try {
-                const { tvSeries: fetchedTv, totalPages: fetchedTotalPages } = await fetchTv(currentPage, 'on_the_air');
+                const { tv: fetchedMovies, totalPages: fetchedTotalPages } = await fetchTv(currentPage, 'on_the_air');
                 if (!active) return;
-                setTvSeries(fetchedTv);
+                setTv(fetchedMovies);
                 setTotalPages(fetchedTotalPages);
             } catch (error) {
                 if (!active) return;
-                setError('Data gagal dimuat. Silakan coba lagi.');
+                setError('Data gagal dimuat. Silakan periksa koneksi internet Anda.');
             } finally {
                 if (active) setLoading(false);
             }
         };
 
-        loadTvAiringToday();
+        loadMovies();
         return () => { active = false; };
     }, [currentPage]);
 
     useEffect(() => {
-        if (topRatedRef.current) {
-            topRatedRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (onTheAirRef.current && currentPage > 1) {
+            onTheAirRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [currentPage]);
 
@@ -68,74 +67,95 @@ function AiringToday() {
     const { start, end } = getPaginationRange(currentPage, totalPages);
 
     return (
-        <div>
-            <div className="my-16 p-4 flex flex-col items-center" ref={topRatedRef}>
-                <h2 className="text-3xl font-bold mb-4 text-center">On The Air</h2>
+        <div className="bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 pb-16" ref={onTheAirRef}>
+                <div className="flex items-end justify-between mb-8 pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                            On The Air
+                        </h1>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                            Serial TV yang sedang berjalan musim ini dalam 7 hari ke depan
+                        </p>
+                    </div>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                        Hal {currentPage} / {totalPages}
+                    </span>
+                </div>
+
                 {loading ? (
-                    <Skeleton/>
+                    <Skeleton count={10} />
                 ) : error ? (
-                    <p role="alert">{error}</p>
-                ) : tvSeries.length === 0 ? (
-                    <p>Tidak ada film atau serial yang tersedia di halaman ini.</p>
+                    <div className="p-6 rounded-2xl bg-red-50 dark:bg-zinc-900 border border-red-200 dark:border-red-500/20 text-center max-w-md mx-auto my-12">
+                        <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>
+                    </div>
+                ) : tv.length === 0 ? (
+                    <div className="text-center py-24 text-zinc-500 dark:text-zinc-400">
+                        <p className="text-sm">Tidak ada serial TV yang tersedia saat ini.</p>
+                    </div>
                 ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {tvSeries.map((tv, index) => (
-                            <TvCard key={index} tv={tv} />
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 w-full">
+                        {tv.map((item, index) => (
+                            <TvCard key={index} tv={item} />
                         ))}
                     </div>
                 )}
-                <div className="mt-6 flex justify-center">
-                    <nav className="pagination flex items-center space-x-2">
-                        <button
-                            className="btn btn-outline"
-                            disabled={currentPage === 1}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                        >
-                            Previous
-                        </button>
-                        {start > 1 && (
-                            <>
-                                <button
-                                    className={`btn ${currentPage === 1 ? 'btn-primary' : 'btn-outline'}`}
-                                    onClick={() => handlePageChange(1)}
-                                >
-                                    1
-                                </button>
-                                {start > 2 && <span className="mx-2">...</span>}
-                            </>
-                        )}
-                        {Array.from({ length: end - start + 1 }, (_, i) => start + i).map(pageIndex => (
+
+                {/* CINEMA PAGINATION */}
+                {totalPages > 1 && (
+                    <div className="mt-12 flex justify-center">
+                        <nav className="flex items-center gap-1.5 sm:gap-2">
                             <button
-                                key={pageIndex}
-                                className={`btn ${currentPage === pageIndex ? 'btn-primary' : 'btn-outline'}`}
-                                onClick={() => handlePageChange(pageIndex)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                disabled={currentPage === 1}
+                                onClick={() => handlePageChange(currentPage - 1)}
                             >
-                                {pageIndex}
+                                Sebelumnya
                             </button>
-                        ))}
-                        {end < totalPages && (
-                            <>
-                                {end < totalPages - 1 && <span className="mx-2">...</span>}
+                            {start > 1 && (
+                                <>
+                                    <button
+                                        className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === 1 ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                        onClick={() => handlePageChange(1)}
+                                    >
+                                        1
+                                    </button>
+                                    {start > 2 && <span className="px-1 text-zinc-400 dark:text-zinc-600 text-xs">...</span>}
+                                </>
+                            )}
+                            {Array.from({ length: end - start + 1 }, (_, i) => start + i).map(pageIndex => (
                                 <button
-                                    className={`btn ${currentPage === totalPages ? 'btn-primary' : 'btn-outline'}`}
-                                    onClick={() => handlePageChange(totalPages)}
+                                    key={pageIndex}
+                                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === pageIndex ? 'bg-rose-600 text-white font-bold shadow-lg shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                    onClick={() => handlePageChange(pageIndex)}
                                 >
-                                    {totalPages}
+                                    {pageIndex}
                                 </button>
-                            </>
-                        )}
-                        <button
-                            className="btn btn-outline"
-                            disabled={currentPage === totalPages}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                        >
-                            Next
-                        </button>
-                    </nav>
-                </div>
+                            ))}
+                            {end < totalPages && (
+                                <>
+                                    {end < totalPages - 1 && <span className="px-1 text-zinc-400 dark:text-zinc-600 text-xs">...</span>}
+                                    <button
+                                        className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === totalPages ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                        onClick={() => handlePageChange(totalPages)}
+                                    >
+                                        {totalPages}
+                                    </button>
+                                </>
+                            )}
+                            <button
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                disabled={currentPage === totalPages}
+                                onClick={() => handlePageChange(currentPage + 1)}
+                            >
+                                Selanjutnya
+                            </button>
+                        </nav>
+                    </div>
+                )}
             </div>
         </div>
     );
 }
 
-export default AiringToday
+export default OnTheAir;

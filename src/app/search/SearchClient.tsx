@@ -1,17 +1,28 @@
 'use client'
-import MovieCard from "@/components/ui/MovieCard";
+import { useState, useEffect, useRef } from "react";
 import { Movie } from "@/interface/Movies";
-import { useEffect, useRef, useState } from "react";
+import MovieCard from "@/components/ui/MovieCard";
 import { fetchSearchResults } from "../api/Movies";
+import { useRouter, useSearchParams } from 'next/navigation';
 import Skeleton from "@/components/ui/Skeleton";
-import { useRouter } from "next/navigation";
 
 const PAGE_RANGE = 1;
 
-function Search({ searchParams }: { searchParams: { query: string, page: number } }) {
+interface SearchProps {
+    searchParams?: {
+        query?: string;
+        page?: number;
+    };
+}
+
+function Search({ searchParams: initialParams }: SearchProps = {}) {
+    const searchParams = useSearchParams();
     const router = useRouter();
-    const currentPage = searchParams.page;
-    const searchQuery = searchParams.query;
+    const searchQuery = searchParams.get('query') ?? initialParams?.query ?? '';
+    const pageParam = searchParams.get('page');
+    const [currentPage, setCurrentPage] = useState(
+        pageParam ? parseInt(pageParam) : (initialParams?.page ?? 1)
+    );
     const [filteredMovies, setFilteredMovies] = useState<Movie[]>([]);
     const [totalPages, setTotalPages] = useState(1);
     const [loading, setLoading] = useState(true);
@@ -19,31 +30,41 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
     const searchRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
+        const page = pageParam ? parseInt(pageParam) : 1;
+        setCurrentPage(page);
+    }, [pageParam]);
+
+    useEffect(() => {
         let active = true;
         setLoading(true);
         setError(null);
-        const loadSearchResult = async () => {
-            try {
-                const { movies: moviesWithDetails, totalPages: fetchedTotalPages } = await fetchSearchResults(searchQuery, currentPage);
-                if (!active) return;
-                setFilteredMovies(moviesWithDetails);
-                setTotalPages(fetchedTotalPages);
-            } catch (error) {
-                if (!active) return;
+        const loadMovies = async () => {
+            if (!searchQuery) {
                 setFilteredMovies([]);
                 setTotalPages(1);
-                setError('Pencarian gagal dimuat. Silakan coba lagi.');
+                setLoading(false);
+                return;
+            }
+
+            try {
+                const { movies, totalPages } = await fetchSearchResults(searchQuery, currentPage);
+                if (!active) return;
+                setFilteredMovies(movies);
+                setTotalPages(totalPages);
+            } catch (error) {
+                if (!active) return;
+                setError('Hasil pencarian gagal dimuat. Silakan coba lagi.');
             } finally {
                 if (active) setLoading(false);
             }
         };
 
-        loadSearchResult();
+        loadMovies();
         return () => { active = false; };
-    }, [currentPage, searchQuery]);
+    }, [searchQuery, currentPage]);
 
     useEffect(() => {
-        if (searchRef.current) {
+        if (searchRef.current && currentPage > 1) {
             searchRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     }, [currentPage]);
@@ -70,73 +91,99 @@ function Search({ searchParams }: { searchParams: { query: string, page: number 
     };
 
     const { start, end } = getPaginationRange(currentPage, totalPages);
+
     return (
-        <div className="my-16 p-4 flex flex-col items-center" ref={searchRef}>
-            <h2 className="text-3xl font-bold mb-4 text-center">Search Results for "{searchQuery}"</h2>
-            {loading ? (
-                 <Skeleton/>
-            ) : error ? (
-                <p role="alert">{error}</p>
-            ) : filteredMovies.length === 0 ? (
-                <p>Tidak ada film atau serial dengan poster yang sesuai di halaman ini.</p>
-            ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {filteredMovies.map(movie => (
-                        <MovieCard key={`${movie.mediaType}-${movie.tmdb_id}`} movie={movie} type={movie.mediaType} />
-                    ))}
+        <div className="bg-zinc-50 dark:bg-[#09090b] text-zinc-900 dark:text-zinc-100 min-h-screen transition-colors duration-200">
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-24 pb-16" ref={searchRef}>
+                <div className="flex items-end justify-between mb-8 pb-3 border-b border-zinc-200 dark:border-zinc-800/80">
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                            Hasil Pencarian &ldquo;{searchQuery}&rdquo;
+                        </h1>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                            Ditemukan {filteredMovies.length > 0 ? `${filteredMovies.length} judul pada halaman ini` : 'tidak ada judul'}
+                        </p>
+                    </div>
+                    {totalPages > 1 && (
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
+                            Hal {currentPage} / {totalPages}
+                        </span>
+                    )}
                 </div>
-            )}
-            <div className="mt-6 flex justify-center">
-                <nav className="pagination flex items-center space-x-2">
-                    <button
-                        className="btn btn-outline"
-                        disabled={currentPage === 1}
-                        onClick={() => handlePageChange(currentPage - 1)}
-                    >
-                        Previous
-                    </button>
-                    {start > 1 && (
-                        <>
+
+                {loading ? (
+                    <Skeleton count={10} />
+                ) : error ? (
+                    <div className="p-6 rounded-2xl bg-red-50 dark:bg-zinc-900 border border-red-200 dark:border-red-500/20 text-center max-w-md mx-auto my-12">
+                        <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>
+                    </div>
+                ) : filteredMovies.length === 0 ? (
+                    <div className="text-center py-24 text-zinc-500 dark:text-zinc-400">
+                        <p className="text-sm">Tidak ada film atau serial yang cocok dengan kata kunci &ldquo;{searchQuery}&rdquo;.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-5 w-full">
+                        {filteredMovies.map(movie => (
+                            <MovieCard key={`${movie.mediaType}-${movie.tmdb_id}`} movie={movie} type={movie.mediaType} />
+                        ))}
+                    </div>
+                )}
+
+                {/* CINEMA PAGINATION */}
+                {totalPages > 1 && (
+                    <div className="mt-12 flex justify-center">
+                        <nav className="flex items-center gap-1.5 sm:gap-2">
                             <button
-                                className={`btn ${currentPage === 1 ? 'btn-primary' : 'btn-outline'}`}
-                                onClick={() => handlePageChange(1)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                disabled={currentPage === 1}
+                                onClick={() => handlePageChange(currentPage - 1)}
                             >
-                                1
+                                Sebelumnya
                             </button>
-                            {start > 2 && <span className="mx-2">...</span>}
-                        </>
-                    )}
-                    {Array.from({ length: end - start + 1 }, (_, i) => start + i).map(pageIndex => (
-                        <button
-                            key={pageIndex}
-                            className={`btn ${currentPage === pageIndex ? 'btn-primary' : 'btn-outline'}`}
-                            onClick={() => handlePageChange(pageIndex)}
-                        >
-                            {pageIndex}
-                        </button>
-                    ))}
-                    {end < totalPages && (
-                        <>
-                            {end < totalPages - 1 && <span className="mx-2">...</span>}
+                            {start > 1 && (
+                                <>
+                                    <button
+                                        className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === 1 ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                        onClick={() => handlePageChange(1)}
+                                    >
+                                        1
+                                    </button>
+                                    {start > 2 && <span className="px-1 text-zinc-400 dark:text-zinc-600 text-xs">...</span>}
+                                </>
+                            )}
+                            {Array.from({ length: end - start + 1 }, (_, i) => start + i).map(pageIndex => (
+                                <button
+                                    key={pageIndex}
+                                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === pageIndex ? 'bg-rose-600 text-white font-bold shadow-lg shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                    onClick={() => handlePageChange(pageIndex)}
+                                >
+                                    {pageIndex}
+                                </button>
+                            ))}
+                            {end < totalPages && (
+                                <>
+                                    {end < totalPages - 1 && <span className="px-1 text-zinc-400 dark:text-zinc-600 text-xs">...</span>}
+                                    <button
+                                        className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${currentPage === totalPages ? 'bg-rose-600 text-white font-bold shadow-md shadow-rose-600/30' : 'bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white shadow-sm'}`}
+                                        onClick={() => handlePageChange(totalPages)}
+                                    >
+                                        {totalPages}
+                                    </button>
+                                </>
+                            )}
                             <button
-                                className={`btn ${currentPage === totalPages ? 'btn-primary' : 'btn-outline'}`}
-                                onClick={() => handlePageChange(totalPages)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-800 text-zinc-700 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:pointer-events-none transition-all shadow-sm"
+                                disabled={currentPage === totalPages}
+                                onClick={() => handlePageChange(currentPage + 1)}
                             >
-                                {totalPages}
+                                Selanjutnya
                             </button>
-                        </>
-                    )}
-                    <button
-                        className="btn btn-outline"
-                        disabled={currentPage === totalPages}
-                        onClick={() => handlePageChange(currentPage + 1)}
-                    >
-                        Next
-                    </button>
-                </nav>
+                        </nav>
+                    </div>
+                )}
             </div>
         </div>
-    )
+    );
 }
 
-export default Search
+export default Search;

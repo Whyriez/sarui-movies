@@ -4,7 +4,8 @@ import { getTrailerKey, TmdbList, TmdbVideos } from '@/lib/tmdb-policy';
 
 export const fetchTv = async (page: number, category: string) => {
     const data = await fetchTmdb<TmdbList>(`tv/${category}`, { page: String(page) });
-    return { tvSeries: data.results.map(tv => toMediaCard(tv, 'tv')), totalPages: Math.max(1, data.total_pages) };
+    const tvList = data.results.map(tv => toMediaCard(tv, 'tv'));
+    return { tv: tvList, tvSeries: tvList, totalPages: Math.max(1, data.total_pages) };
 };
 
 export const fetchTrendingTv = async (page: number) => {

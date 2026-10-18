@@ -1,271 +1,511 @@
-'use client'
-import { useEffect, useState } from 'react'
-import * as cheerio from 'cheerio';
-import { title } from 'process';
+'use client';
 
-interface Modal {
-    id: string;
-    contentType: 'play' | 'trailer' | 'series';
-    title: string;
-    tmdbId: string;
-    trailerKey?: string | null;
-    season?: string;
-    episode?: number;
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Captions, Check, ChevronDown, RefreshCw, Shield, X } from 'lucide-react';
+
+export interface ModalProps {
+  id?: string;
+  isOpen?: boolean;
+  onClose?: () => void;
+  contentType: 'play' | 'trailer' | 'series' | null;
+  title: string;
+  tmdbId: string;
+  trailerKey?: string | null;
+  season?: string;
+  episode?: number;
 }
-const formatTitle = (title: string) => {
-    return title.toLowerCase().replace(/\s+/g, '-');
+
+type StreamContext = {
+  isSeries: boolean;
+  tmdbId: string;
+  season?: string;
+  episode?: number;
+  formattedTitle: string;
+  rawTitle: string;
+  subtitleUrl: string | null;
 };
 
-const Modal: React.FC<Modal> = ({ id, contentType, title, tmdbId, trailerKey, season, episode }) => {
-    const isPlay = contentType === 'play';
-    const isTrailer = contentType === 'trailer' && trailerKey;
-    const isSeries = contentType === 'series';
-    const [embedUrl, setEmbedUrl] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const formattedTitle = formatTitle(title);
-    const [selectedServer, setSelectedServer] = useState("server1");
+type ServerOption = {
+  id: string;
+  label: string;
+  disabled?: boolean;
+  supportsSubtitle?: boolean;
+  // Only enable iframe sandbox for providers verified to function with it.
+  supportsSandbox?: boolean;
+  referrerPolicy: 'no-referrer' | 'strict-origin-when-cross-origin';
+  getUrl: (ctx: StreamContext) => string;
+};
 
-    const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
-    const [isUploadingSub, setIsUploadingSub] = useState(false);
+const trimSlash = (value: string) => value.replace(/\/+$/, '');
+const seriesPath = (ctx: StreamContext, movie: string, tv: string) =>
+  ctx.isSeries && ctx.season && ctx.episode != null ? tv : movie;
 
-    const checkEmbedAvailability = async (url: string, timeout: number = 3000) => {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+const SERVERS: ServerOption[] = [
+  {
+    id: 'server1',
+    label: 'Server 1',
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    getUrl: ({ isSeries, tmdbId, season, episode, rawTitle }) => {
+      const base = trimSlash(
+        process.env.NEXT_PUBLIC_STREAM_PROVIDER_URL ||
+          'https://sarui-mov-provider.vercel.app',
+      );
+      const path = isSeries && season && episode != null
+        ? `/embed/tv/${encodeURIComponent(tmdbId)}/${encodeURIComponent(season)}/${episode}`
+        : `/embed/movie/${encodeURIComponent(tmdbId)}`;
+      const params = new URLSearchParams({ autoplay: '1' });
+      if (rawTitle) params.set('title', rawTitle);
 
-            const response = await fetch(url, {
-                method: 'HEAD',
-                signal: controller.signal,
-            });
-            clearTimeout(timeoutId);
+      // Never put an API secret or NEXT_PUBLIC_* key in a browser iframe URL.
+      // If the provider requires authentication, resolve a short-lived embed
+      // URL or session server-side, and use that URL instead.
+      return `${base}${path}?${params.toString()}`;
+    },
+  },
+  {
+    id: 'server2',
+    label: 'Server 2',
+    disabled: true,
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(
+        process.env.NEXT_PUBLIC_EMBED_SERVER2 ||
+          'https://media-streaming-ecru.vercel.app',
+      );
+      return seriesPath(
+        ctx,
+        `${base}/media/tmdb-movie-${ctx.tmdbId}-${ctx.formattedTitle}`,
+        `${base}/media/tmdb-tv-${ctx.tmdbId}-${ctx.formattedTitle}`,
+      );
+    },
+  },
+  {
+    id: 'server3',
+    label: 'Server 3',
+    supportsSandbox: true,
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(process.env.NEXT_PUBLIC_EMBED_SERVER1 || 'https://embedwave.cc');
+      return seriesPath(
+        ctx,
+        `${base}/embed/movie/${ctx.tmdbId}`,
+        `${base}/embed/tv/${ctx.tmdbId}/${ctx.season}/${ctx.episode}`,
+      );
+    },
+  },
+  {
+    id: 'server4',
+    label: 'Server 4',
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(
+        process.env.NEXT_PUBLIC_EMBED_SERVER3 || 'https://watch.embed-api.stream',
+      );
+      return seriesPath(
+        ctx,
+        `${base}/embed/movie/${ctx.tmdbId}`,
+        `${base}/embed/tv/${ctx.tmdbId}/${ctx.season}/${ctx.episode}`,
+      );
+    },
+  },
+  {
+    id: 'server5',
+    label: 'Server 5',
+    supportsSubtitle: true,
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(process.env.NEXT_PUBLIC_EMBED_SERVER4 || 'https://vidlink.pro');
+      const path = seriesPath(
+        ctx,
+        `${base}/movie/${ctx.tmdbId}`,
+        `${base}/tv/${ctx.tmdbId}/${ctx.season}/${ctx.episode}`,
+      );
+      const query = new URLSearchParams();
+      if (ctx.isSeries) query.set('nextbutton', 'true');
+      if (ctx.subtitleUrl) {
+        query.set('sub_file', ctx.subtitleUrl);
+        query.set('sub_label', 'Custom Subtitle');
+      }
+      return query.size ? `${path}?${query.toString()}` : path;
+    },
+  },
+  {
+    id: 'server6',
+    label: 'Server 6',
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(process.env.NEXT_PUBLIC_EMBED_SERVER5 || 'https://multiembed.mov');
+      const query = new URLSearchParams({ video_id: ctx.tmdbId, tmdb: '1' });
+      if (ctx.isSeries && ctx.season && ctx.episode != null) {
+        query.set('s', ctx.season);
+        query.set('e', String(ctx.episode));
+      }
+      return `${base}/?${query.toString()}`;
+    },
+  },
+  {
+    id: 'server7',
+    label: 'Server 7',
+    referrerPolicy: 'no-referrer',
+    getUrl: (ctx) => {
+      const base = trimSlash(process.env.NEXT_PUBLIC_EMBED_SERVER6 || 'https://vidsrc.sh/embed');
+      return seriesPath(
+        ctx,
+        `${base}/movie/${ctx.tmdbId}`,
+        `${base}/tv/${ctx.tmdbId}/${ctx.season}/${ctx.episode}`,
+      );
+    },
+  },
+];
 
-            return response.ok;
-        } catch (error) {
-            return false;
-        }
-    };
+const formatTitle = (title: string) =>
+  title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!e.target.files || e.target.files.length === 0) return;
+const controlButton =
+  'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-white/55 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:cursor-not-allowed disabled:opacity-30';
 
-        const file = e.target.files[0];
-        setIsUploadingSub(true);
+const Modal: React.FC<ModalProps> = ({
+  id = 'modal',
+  isOpen = true,
+  onClose,
+  contentType,
+  title,
+  tmdbId,
+  trailerKey,
+  season,
+  episode,
+}) => {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedServer, setSelectedServer] = useState('server1');
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasFrameError, setHasFrameError] = useState(false);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [subtitleFileName, setSubtitleFileName] = useState('');
+  const [showSubPanel, setShowSubPanel] = useState(false);
+  const [isUploadingSub, setIsUploadingSub] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [restrictPopups, setRestrictPopups] = useState(true);
 
-        const formData = new FormData();
-        formData.append('file', file);
+  const isTrailer = contentType === 'trailer';
+  const isSeries = contentType === 'series';
+  const activeServer = useMemo(
+    () => SERVERS.find((server) => server.id === selectedServer && !server.disabled) || SERVERS[0],
+    [selectedServer],
+  );
 
-        try {
-            const res = await fetch('/api/upload-subtitle', {
-                method: 'POST',
-                body: formData,
-            });
+  const streamContext = useMemo<StreamContext>(
+    () => ({
+      isSeries,
+      tmdbId,
+      season,
+      episode,
+      formattedTitle: formatTitle(title),
+      rawTitle: title,
+      subtitleUrl,
+    }),
+    [isSeries, tmdbId, season, episode, title, subtitleUrl],
+  );
 
-            const data = await res.json();
-            if (res.ok && data.url) {
-                setSubtitleUrl(data.url);
-            } else {
-                alert('Gagal upload subtitle: ' + (data.error || 'Unknown error'));
-            }
-        } catch (error) {
-            console.error(error);
-            alert('Terjadi kesalahan saat upload subtitle');
-            setIsLoading(false);
-        } finally {
-            setIsUploadingSub(false);
-        }
-    };
+  const embedUrl = useMemo(() => {
+    if (!contentType) return null;
+    if (isTrailer) {
+      if (!trailerKey) return null;
+      const youtubeBase = trimSlash(process.env.NEXT_PUBLIC_YOUTUBE || 'https://www.youtube.com');
+      return `${youtubeBase}/embed/${encodeURIComponent(trailerKey)}?autoplay=1&rel=0`;
+    }
+    return activeServer.getUrl(streamContext);
+  }, [contentType, isTrailer, trailerKey, activeServer, streamContext]);
 
-    useEffect(() => {
-        setSubtitleUrl(null);
-    }, [tmdbId, season, episode]);
+  const sandbox = !isTrailer && restrictPopups && activeServer.supportsSandbox
+    ? 'allow-scripts allow-same-origin allow-forms allow-presentation'
+    : undefined;
 
-    useEffect(() => {
-        const determineEmbedUrl = () => {
-            setIsLoading(true);
-            let url = '';
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen && !dialog.open) dialog.showModal();
+    if (!isOpen && dialog.open) dialog.close();
+  }, [isOpen]);
 
-            // Hapus pengecekan fetch (CORS issue), langsung construct URL
-            if (selectedServer === "server1") {
-                if (isSeries && season && episode) {
-                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-tv-${tmdbId}-${formattedTitle}`;
-                } else if (isPlay) {
-                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE2}/media/tmdb-movie-${tmdbId}-${formattedTitle}`;
-                }
-            } else if (selectedServer === "server2") {
-                if (isSeries && season && episode) {
-                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/tv/${tmdbId}/${season}/${episode}`;
-                } else if (isPlay) {
-                    url = `${process.env.NEXT_PUBLIC_VIDEO_EMBED_ALTERNATIVE}/movie/${tmdbId}`;
-                }
-            } else if (selectedServer === "server3") {
-                if (isSeries && season && episode) {
-                    url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1&s=${season}&e=${episode}`;
-                } else if (isPlay) {
-                    url = `https://multiembed.mov/?video_id=${tmdbId}&tmdb=1`;
-                }
-            } else if (selectedServer === "server4") {
-                // --- LOGIKA SERVER 4 DENGAN SUBTITLE ---
+  useEffect(() => {
+    setSelectedServer('server1');
+    setSubtitleUrl(null);
+    setSubtitleFileName('');
+    setShowSubPanel(false);
+    setUploadError('');
+  }, [tmdbId, season, episode, contentType]);
 
-                let baseUrl = '';
-                if (isSeries && season && episode) {
-                    baseUrl = `https://vidlink.pro/tv/${tmdbId}/${season}/${episode}`;
-                } else if (isPlay) {
-                    baseUrl = `https://vidlink.pro/movie/${tmdbId}`;
-                }
+  useEffect(() => {
+    if (!isOpen || !embedUrl) return;
+    setIsLoading(true);
+    setHasFrameError(false);
+  }, [isOpen, embedUrl, reloadKey]);
 
-                // Gunakan URLSearchParams untuk menyusun query string dengan rapi
-                const params = new URLSearchParams();
+  const requestClose = () => {
+    if (onClose) onClose();
+    else dialogRef.current?.close();
+  };
 
-                // 1. Params Next Button (Sesuai request)
-                if (isSeries) {
-                    params.append('nextbutton', 'true');
-                }
+  const reloadPlayer = () => {
+    setHasFrameError(false);
+    setIsLoading(true);
+    setReloadKey((current) => current + 1);
+  };
 
-                // 2. Params Subtitle (JIKA ADA URL HASIL UPLOAD)
-                if (subtitleUrl) {
-                    params.append('sub_file', subtitleUrl);
-                    params.append('sub_label', 'Indonesian / Custom'); // Label subtitle di player
-                }
+  const uploadSubtitle = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
 
-                // Gabungkan Base URL + Params
-                // Cek apakah baseUrl sudah punya '?' (jarang terjadi di vidlink clean url, tapi buat jaga-jaga)
-                const queryString = params.toString();
-                url = queryString ? `${baseUrl}?${queryString}` : baseUrl;
-            }
+    setUploadError('');
+    if (!/\.(srt|vtt)$/i.test(file.name)) {
+      setUploadError('Gunakan file subtitle .srt atau .vtt.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('Ukuran subtitle maksimal 2 MB.');
+      return;
+    }
 
-            setEmbedUrl(url);
-           setTimeout(() => {
-                setIsLoading(false);
-            }, 500); // Delay 0.5 detik cukup
-        };
+    const formData = new FormData();
+    formData.append('file', file);
+    setIsUploadingSub(true);
 
-        determineEmbedUrl();
-    }, [selectedServer, isSeries, isPlay, isTrailer, tmdbId, formattedTitle, season, episode, trailerKey, subtitleUrl]);
+    try {
+      const response = await fetch('/api/upload-subtitle', {
+        method: 'POST',
+        body: formData,
+      });
+      const data: { url?: unknown; error?: string } = await response.json();
+      if (!response.ok || typeof data.url !== 'string' || !data.url) {
+        throw new Error(data.error || 'File tidak dapat diunggah.');
+      }
+      setSubtitleUrl(data.url);
+      setSubtitleFileName(file.name);
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Upload subtitle gagal.');
+    } finally {
+      setIsUploadingSub(false);
+    }
+  };
 
-    // useEffect(() => {
-    //     const fetchAndCleanHtml = async () => {
-    //         if (isPlay) {
-    //             const res = await fetch(`https://vidsrc.io/embed/movie/${tmdbId}`);
-    //             const html = await res.text();
-
-    //             const $ = cheerio.load(html);
-
-    //             const iframeSrc = $('#player_iframe').attr('src');
-    //             setIframeSrc(iframeSrc || null);
-
-    //             const servers = $('.server')
-    //                 .map((i, el) => {
-    //                     const name = $(el).text().trim(); 
-    //                     const hash = $(el).attr('data-hash');
-    //                     return hash ? { name, hash } : null;
-    //                 })
-    //                 .get()
-    //                 .filter((server): server is { name: string; hash: string } => server !== null);
-
-    //             setServerData(servers);
-
-    //         } else if (isTrailer) {
-    //             setIframeSrc(`${process.env.NEXT_PUBLIC_YOUTUBE}/embed/${trailerKey}`);
-    //         }
-    //     };
-
-    //     fetchAndCleanHtml();
-    // }, [tmdbId, trailerKey, isPlay, isTrailer]);
-
-
-    useEffect(() => {
-        const modalElement = document.getElementById(id) as HTMLDialogElement | null;
-        const handleClose = () => {
-            if (modalElement) {
-                const iframe = modalElement.querySelector('iframe') as HTMLIFrameElement;
-                if (iframe) {
-                    iframe.src = iframe.src;
-                }
-            }
-        };
-
-        if (modalElement) {
-            modalElement.addEventListener('close', handleClose);
-        }
-
-        return () => {
-            if (modalElement) {
-                modalElement.removeEventListener('close', handleClose);
-            }
-        };
-    }, [id]);
-
-    return (
-        <div>
-            <dialog id={id} className="modal">
-                <div className="modal-box  w-11/12 max-w-5xl" >
-                    <div className="modal-action flex-col">
-                        <div className="relative w-full h-0" style={{ paddingBottom: '56.25%' }}>
-                            {isLoading ? (
-                                <div className="absolute top-0 left-0 w-full h-full flex items-center justify-center bg-black/10">
-                                    <div className="loading loading-spinner loading-lg"></div>
-                                </div>
-                            ) : (
-                                embedUrl && (
-                                    <iframe
-                                        key={embedUrl}
-
-                                        src={embedUrl}
-                                        title={`${contentType} Embed`}
-                                        frameBorder="0"
-                                        allowFullScreen
-                                        className="absolute top-0 left-0 w-full h-full rounded-lg"
-                                    />
-                                )
-                            )}
-                        </div>
-                        <div className="flex justify-center gap-4 mt-4">
-                            <div className="flex flex-wrap justify-center gap-2">
-                                {['server1', 'server2', 'server3', 'server4'].map((server) => (
-                                    <button
-                                        key={server}
-                                        className={`btn btn-sm sm:btn-md ${selectedServer === server ? 'btn-primary' : 'btn-outline'}`}
-                                        onClick={() => setSelectedServer(server)}
-                                    >
-                                        {server.charAt(0).toUpperCase() + server.slice(1).replace('server', 'Server ')}
-                                    </button>
-                                ))}
-                            </div>
-                            {selectedServer === 'server4' && (
-                                <div className="flex flex-col items-center p-3 bg-base-200 rounded-lg w-full max-w-md">
-                                    <span className="text-sm font-semibold mb-2">
-                                        Custom Subtitle (.srt / .vtt)
-                                    </span>
-                                    <div className="flex items-center gap-2 w-full">
-                                        <input
-                                            type="file"
-                                            accept=".srt,.vtt"
-                                            onChange={handleFileUpload}
-                                            className="file-input file-input-bordered file-input-sm w-full"
-                                            disabled={isUploadingSub}
-                                        />
-                                        {isUploadingSub && <span className="loading loading-spinner loading-sm"></span>}
-                                    </div>
-                                    <p className="text-xs text-opacity-50 mt-1 text-center">
-                                        Subtitle akan dikonversi otomatis dan berlaku 24 jam.
-                                    </p>
-                                    {subtitleUrl && (
-                                        <div className="badge badge-success gap-2 mt-2">
-                                            Subtitle Active
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                        <form method="dialog">
-                            <button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
-                        </form>
-                    </div>
-                </div>
-            </dialog>
-
+  return (
+    <dialog
+      ref={dialogRef}
+      id={id}
+      aria-labelledby={`${id}-title`}
+      onCancel={(event) => {
+        event.preventDefault();
+        requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target === dialogRef.current) requestClose();
+      }}
+      className="fixed inset-0 m-auto h-[100dvh] max-h-[100dvh] w-screen max-w-none overflow-hidden border-0 bg-[#101010] p-0 text-white shadow-2xl outline-none backdrop:bg-black/85 backdrop:backdrop-blur-[3px] open:flex open:flex-col sm:h-auto sm:max-h-[94dvh] sm:w-[calc(100vw-48px)] sm:max-w-[1240px] sm:rounded-xl sm:border sm:border-white/[0.10]"
+    >
+      {/* Header: title, quiet metadata, and close. */}
+      <header className="flex min-h-[72px] shrink-0 items-center justify-between gap-4 px-5 sm:px-7">
+        <div className="min-w-0">
+          <h2
+            id={`${id}-title`}
+            className="truncate text-[17px] font-medium tracking-[-0.025em] text-white/95 sm:text-[19px]"
+          >
+            {title}
+          </h2>
+          <p className="mt-0.5 text-[12px] text-white/40">
+            {isTrailer
+              ? 'Trailer'
+              : isSeries && season && episode != null
+                ? `Season ${season} · Episode ${episode}`
+                : 'Sedang menonton'}
+          </p>
         </div>
-    )
-}
+        <button className={controlButton} type="button" onClick={requestClose} aria-label="Tutup pemutar">
+          <X size={20} strokeWidth={1.7} />
+        </button>
+      </header>
 
-export default Modal
+      {/* The film should take the largest share of visual attention. */}
+      <section className="relative flex min-h-0 flex-1 items-center justify-center bg-black sm:flex-none">
+        <div className="relative aspect-video w-full max-h-[calc(100dvh-176px)] overflow-hidden bg-black sm:max-h-[min(72dvh,760px)]">
+          {isOpen && embedUrl && (
+            <iframe
+              key={`${embedUrl}-${reloadKey}-${sandbox || 'compatible'}`}
+              src={embedUrl}
+              title={`${title} — ${isTrailer ? 'trailer' : 'video'}`}
+              className="absolute inset-0 h-full w-full border-0"
+              allow="autoplay; fullscreen; picture-in-picture; encrypted-media; accelerometer; gyroscope"
+              allowFullScreen
+              sandbox={sandbox}
+              referrerPolicy={
+                isTrailer ? 'strict-origin-when-cross-origin' : activeServer.referrerPolicy
+              }
+              onLoad={() => {
+                setIsLoading(false);
+                setHasFrameError(false);
+              }}
+              onError={() => {
+                setIsLoading(false);
+                setHasFrameError(true);
+              }}
+            />
+          )}
+
+          {isOpen && embedUrl && isLoading && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-[#070707]" role="status" aria-label="Memuat video">
+              <span className="h-7 w-7 animate-spin rounded-full border-2 border-white/15 border-t-white/75" />
+            </div>
+          )}
+
+          {(!embedUrl || hasFrameError) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+              <p className="text-[15px] font-medium text-white/85">
+                {isTrailer ? 'Trailer tidak tersedia' : 'Video tidak dapat ditampilkan'}
+              </p>
+              <p className="max-w-xs text-[13px] leading-6 text-white/45">
+                {isTrailer ? 'Trailer belum tersedia untuk judul ini.' : 'Coba muat ulang atau pilih server lain.'}
+              </p>
+              {embedUrl && (
+                <button
+                  type="button"
+                  onClick={reloadPlayer}
+                  className="mt-2 border-b border-white/40 pb-1 text-[13px] text-white/85 hover:border-white"
+                >
+                  Coba lagi
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {!isTrailer && (
+        <footer className="shrink-0 border-t border-white/[0.08] bg-[#101010]">
+          <div className="flex min-h-[76px] flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-7">
+            <div className="flex min-w-0 items-center gap-3">
+              <label
+                htmlFor={`${id}-server`}
+                className="shrink-0 text-[12px] text-white/45"
+              >
+                Server
+              </label>
+              <div className="relative">
+                <select
+                  id={`${id}-server`}
+                  value={activeServer.id}
+                  onChange={(event) => {
+                    setSelectedServer(event.target.value);
+                    setShowSubPanel(false);
+                  }}
+                  className="h-10 min-w-[148px] appearance-none rounded-md border border-white/[0.12] bg-[#1b1b1b] py-2 pl-3 pr-9 text-[13px] font-medium text-white/90 outline-none transition-colors hover:border-white/25 focus-visible:border-white/50"
+                >
+                  {SERVERS.map((server) => (
+                    <option key={server.id} value={server.id} disabled={server.disabled}>
+                      {server.label}{server.disabled ? ' (Tidak tersedia)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/45"
+                  size={14}
+                  strokeWidth={1.6}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1">
+              {activeServer.supportsSubtitle && (
+                <button
+                  type="button"
+                  onClick={() => setShowSubPanel((value) => !value)}
+                  aria-expanded={showSubPanel}
+                  className={`inline-flex h-10 items-center gap-2 rounded-md px-3 text-[12px] transition-colors hover:bg-white/[0.07] ${
+                    showSubPanel || subtitleUrl ? 'text-white' : 'text-white/55'
+                  }`}
+                >
+                  <Captions size={17} strokeWidth={1.6} />
+                  Subtitle
+                  {subtitleUrl && <Check size={13} strokeWidth={2} aria-label="Aktif" />}
+                </button>
+              )}
+              {activeServer.supportsSandbox && (
+                <button
+                  type="button"
+                  aria-pressed={restrictPopups}
+                  onClick={() => setRestrictPopups((value) => !value)}
+                  title="Batasi pop-up dari pemutar ini (mode kompatibilitas dapat diperlukan)"
+                  className={`inline-flex h-10 items-center gap-2 rounded-md px-3 text-[12px] transition-colors hover:bg-white/[0.07] ${
+                    restrictPopups ? 'text-white' : 'text-white/45'
+                  }`}
+                >
+                  <Shield size={16} strokeWidth={1.7} />
+                  <span className="hidden sm:inline">Batasi pop-up</span>
+                  <span className="sm:hidden">Proteksi</span>
+                  <span className="text-white/40">{restrictPopups ? 'On' : 'Off'}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className={controlButton}
+                title="Muat ulang video"
+                aria-label="Muat ulang video"
+                onClick={reloadPlayer}
+              >
+                <RefreshCw size={17} strokeWidth={1.7} />
+              </button>
+            </div>
+          </div>
+
+          {activeServer.supportsSubtitle && showSubPanel && (
+            <div className="border-t border-white/[0.08] px-5 py-4 sm:px-7">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-white/90">Subtitle tambahan</p>
+                  <p className="mt-1 truncate text-[12px] text-white/40">
+                    {subtitleFileName || 'Pilih file .srt atau .vtt untuk video ini.'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".srt,.vtt"
+                    className="sr-only"
+                    tabIndex={-1}
+                    onChange={uploadSubtitle}
+                  />
+                  {subtitleUrl && (
+                    <button
+                      type="button"
+                      className="text-[12px] text-white/45 underline underline-offset-4 hover:text-white"
+                      onClick={() => {
+                        setSubtitleUrl(null);
+                        setSubtitleFileName('');
+                        setUploadError('');
+                      }}
+                    >
+                      Hapus
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    disabled={isUploadingSub}
+                    className="inline-flex h-9 min-w-[110px] items-center justify-center rounded-md border border-white/20 bg-white/[0.09] px-4 text-[12px] font-medium text-white transition-colors hover:bg-white/[0.16] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60 disabled:opacity-50"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {isUploadingSub ? 'Mengunggah…' : subtitleUrl ? 'Ganti file' : 'Pilih file'}
+                  </button>
+                </div>
+              </div>
+              {uploadError && <p role="alert" className="mt-3 text-[12px] text-rose-300">{uploadError}</p>}
+            </div>
+          )}
+        </footer>
+      )}
+    </dialog>
+  );
+};
+
+export default Modal;

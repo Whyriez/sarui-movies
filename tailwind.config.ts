@@ -9,6 +9,9 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      screens: {
+        'xs': '475px',
+      },
       // backgroundImage: {
       //   "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
       //   "gradient-conic":
@@ -57,9 +60,7 @@ const config: Config = {
     themeRoot: ":root",
   },
   plugins: [
-    require('@tailwindcss/line-clamp'),
     require('daisyui'),
-   
   ],
 };
 export default config;

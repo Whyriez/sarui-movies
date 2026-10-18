@@ -12,14 +12,19 @@ export function toMediaCard(media: TmdbMedia, type?: MediaType): Movie {
     const title = getMediaTitle(media);
     return {
         imdb_id: media.imdb_id ?? '',
-        tmdb_id: String(media.id), title, mediaType,
+        tmdb_id: String(media.id),
+        title,
+        mediaType,
         embed_url: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/${mediaType}/${media.imdb_id ?? media.id}`,
         embed_url_tmdb: `${process.env.NEXT_PUBLIC_API_BASE_URL}/embed/${mediaType}/${media.id}`,
         quality: '',
         details: {
-            title, poster_path: media.poster_path ?? '',
+            title,
+            poster_path: media.poster_path ?? '',
+            backdrop_path: media.backdrop_path ?? '',
             overview: getOverviewText(media.overview),
             release_date: media.release_date ?? media.first_air_date ?? '',
+            vote_average: media.vote_average,
         },
     };
 }

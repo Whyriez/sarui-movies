@@ -9,8 +9,10 @@ export interface Tv {
     details?: {
         title: string;
         poster_path: string;
+        backdrop_path?: string;
         overview: string;
         release_date: string;
+        vote_average?: number;
     };
 }
 
@@ -49,7 +51,7 @@ export interface GuestStar {
 }
 
 export interface SeasonDetails {
-    air_date: string,
+    air_date: string;
     name: string;
     overview: string;
     id: number;

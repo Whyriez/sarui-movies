@@ -34,49 +34,78 @@ function loadService(respond) {
     return { service: load(path.resolve(__dirname, '../src/lib/tmdb-server.ts')), policy: load(path.resolve(__dirname, '../src/lib/tmdb-policy.ts')), calls };
 }
 
-const movie = (id, extra = {}) => ({ id, title: `Film ${id}`, adult: false, poster_path: '/poster.jpg', media_type: 'movie', overview: 'Sinopsis fixture.', ...extra });
+const movie = (id, extra = {}) => ({
+    id,
+    title: `Film ${id}`,
+    adult: false,
+    poster_path: '/poster.jpg',
+    media_type: 'movie',
+    overview: 'Sinopsis fixture.',
+    release_date: '2020-01-01',
+    status: 'Released',
+    ...extra,
+});
 const list = results => ({ results, page: 1, total_pages: 7, total_results: 140 });
 
-test('search removes adults, missing posters, people, and erotic content marked adult=false', async () => {
-    const { service, calls } = loadService(({ path: endpoint }) => ({ body: endpoint === 'search/multi'
-        ? list([movie(1), movie(2, { adult: true }), movie(3, { poster_path: null }), movie(4, { media_type: 'person' }), movie(5)])
-        : { keywords: endpoint === 'movie/5/keywords' ? [{ name: 'Erotic Thriller' }] : [] } }));
-    const data = await service.getTmdbData('search/multi', new URLSearchParams({ query: 'film', include_adult: 'true', language: 'en-US' }));
-    assert.deepEqual(data.results.map(item => item.id), [1]);
+test('search removes missing posters, people, and unreleased content while allowing 18+ content', async () => {
+    const { service, calls } = loadService(({ path: endpoint }) => {
+        if (endpoint === 'search/multi') {
+            return {
+                body: list([
+                    movie(1, { status: 'Released' }),
+                    movie(2, { adult: true, status: 'Released' }), // 18+ content is allowed
+                    movie(3, { poster_path: null }), // Missing poster removed
+                    movie(4, { media_type: 'person' }), // Person removed
+                    movie(5, { status: 'Post Production' }), // Post production removed
+                    movie(6, { release_date: '2099-01-01' }), // Future unreleased removed
+                ])
+            };
+        }
+        return { body: { status: 'Released', poster_path: '/poster.jpg' } };
+    });
+    const data = await service.getTmdbData('search/multi', new URLSearchParams({ query: 'film', language: 'en-US' }));
+    assert.deepEqual(data.results.map(item => item.id), [1, 2]);
     assert.equal(data.total_pages, 7);
     assert.equal(calls[0].params.get('language'), 'id-ID');
-    assert.equal(calls[0].params.get('include_adult'), 'false');
-    assert.deepEqual(calls.slice(1).map(call => call.path), ['movie/1/keywords', 'movie/5/keywords']);
+    assert.equal(calls[0].params.get('include_adult'), 'true');
 });
 
 test('catalog and trending keep upstream ordering and supply the correct media type', async () => {
     for (const endpoint of ['movie/popular', 'movie/now_playing', 'movie/upcoming', 'movie/top_rated', 'trending/movie/day']) {
         const { service } = loadService(({ path: requested }) => ({ body: requested === endpoint
-            ? list([movie(9, { media_type: undefined, release_date: '2000-01-01' }), movie(8, { release_date: '2026-01-01' })]) : { keywords: [] } }));
+            ? list([movie(9, { media_type: undefined, release_date: '2000-01-01', status: 'Released' }), movie(8, { release_date: '2026-01-01', status: 'Released' })])
+            : { status: 'Released', poster_path: '/poster.jpg' } }));
         const data = await service.getTmdbData(endpoint, new URLSearchParams());
         assert.deepEqual(data.results.map(item => item.id), [9, 8]);
         assert.equal(data.results[0].media_type, 'movie');
     }
 });
 
-test('TV keywords use results, and Indonesian original names appear in search and detail', async () => {
-    const raw = { id: 1, name: 'English Title', original_name: 'Judul Indonesia', original_language: 'id', media_type: 'tv', poster_path: '/tv.jpg', overview: 'Sinopsis fixture.' };
-    const { service } = loadService(({ path: endpoint }) => ({ body: endpoint === 'search/multi' ? list([raw, { ...raw, id: 2 }])
-        : endpoint === 'tv/1' ? { ...raw, keywords: { results: [] } }
-        : { results: endpoint === 'tv/2/keywords' ? [{ name: 'hentai' }] : [] } }));
+test('TV original names appear in search and detail, and unreleased series are filtered', async () => {
+    const raw = { id: 1, name: 'English Title', original_name: 'Judul Indonesia', original_language: 'id', media_type: 'tv', poster_path: '/tv.jpg', overview: 'Sinopsis fixture.', status: 'Returning Series', first_air_date: '2020-01-01' };
+    const { service } = loadService(({ path: endpoint }) => {
+        if (endpoint === 'search/multi') return { body: list([raw, { ...raw, id: 2, status: 'In Production' }]) };
+        if (endpoint === 'tv/1') return { body: { ...raw, status: 'Returning Series' } };
+        return { body: { status: endpoint === 'tv/2' ? 'In Production' : 'Returning Series', poster_path: '/tv.jpg' } };
+    });
     const data = await service.getTmdbData('search/multi', new URLSearchParams({ query: 'judul' }));
     assert.equal(data.results.length, 1);
     assert.equal(data.results[0].name, 'Judul Indonesia');
     assert.equal((await service.getSafeDetails('tv', '1')).name, 'Judul Indonesia');
 });
 
-test('all TV catalogs apply poster and adult filters', async () => {
+test('all TV catalogs apply poster and release filters, allowing 18+ content', async () => {
     for (const endpoint of ['tv/popular', 'tv/top_rated', 'tv/airing_today', 'tv/on_the_air', 'trending/tv/day']) {
         const { service } = loadService(({ path: requested }) => ({ body: requested === endpoint
-            ? list([{ id: 1, name: 'Serial', poster_path: '/tv.jpg' }, { id: 2, name: 'Serial', poster_path: null }, { id: 3, name: 'Serial', poster_path: '/tv.jpg', adult: true }])
-            : { results: [] } }));
+            ? list([
+                { id: 1, name: 'Serial 1', poster_path: '/tv.jpg', status: 'Returning Series', first_air_date: '2020-01-01' },
+                { id: 2, name: 'Serial 2', poster_path: null, status: 'Returning Series', first_air_date: '2020-01-01' }, // Missing poster
+                { id: 3, name: 'Serial 3 (18+)', poster_path: '/tv.jpg', adult: true, status: 'Ended', first_air_date: '2020-01-01' }, // 18+ allowed
+                { id: 4, name: 'Serial 4', poster_path: '/tv.jpg', status: 'Planned', first_air_date: '2099-01-01' }, // Planned unreleased
+            ])
+            : { status: requested === 'tv/4' ? 'Planned' : 'Returning Series', poster_path: '/tv.jpg' } }));
         const data = await service.getTmdbData(endpoint, new URLSearchParams());
-        assert.deepEqual(data.results.map(item => item.id), [1]);
+        assert.deepEqual(data.results.map(item => item.id), [1, 3]);
         assert.equal(data.results[0].media_type, 'tv');
     }
 });
@@ -86,28 +115,30 @@ test('Indonesian original movie title overrides English; foreign movies use loca
     assert.equal(policy.getMediaTitle(movie(1, { title: 'The Raid', original_title: 'Serbuan Maut', original_language: 'id' })), 'Serbuan Maut');
     assert.equal(policy.getMediaTitle(movie(1, { title: 'Judul lokal', original_title: 'Original', original_language: 'ja' })), 'Judul lokal');
     assert.equal(policy.getMediaTitle(movie(1, { title: '', original_title: 'Fallback' })), 'Fallback');
-    assert.equal(policy.hasExplicitKeywords({ keywords: [{ name: 'romance' }, { name: 'drama' }] }), false);
-    assert.equal(policy.hasExplicitKeywords({ keywords: [{ name: 'bdsm' }] }), true);
 });
 
-test('unsafe direct details and seasons are blocked before loading episodes', async () => {
-    for (const unsafe of [{ adult: true, keywords: { keywords: [] } }, { adult: false, keywords: { keywords: [{ name: 'pornography' }] } }]) {
-        const { service, calls } = loadService(() => ({ body: { ...movie(1), ...unsafe } }));
+test('unreleased direct details and missing posters are blocked with 404', async () => {
+    for (const unplayable of [
+        { status: 'Post Production' },
+        { status: 'In Production' },
+        { status: 'Planned' },
+        { poster_path: null },
+        { poster_path: '' },
+    ]) {
+        const { service } = loadService(() => ({ body: { ...movie(1), ...unplayable } }));
         await assert.rejects(service.getSafeDetails('movie', '1'), error => error.status === 404);
         await assert.rejects(service.getSafeSeason('1', '1'), error => error.status === 404);
-        assert.ok(!calls.some(call => call.path.includes('/season/')));
     }
+
+    // 18+ movie with valid poster and Released status is allowed
+    const { service } = loadService(() => ({ body: movie(1, { adult: true, status: 'Released', poster_path: '/poster.jpg' }) }));
+    const safeAdult = await service.getSafeDetails('movie', '1');
+    assert.equal(safeAdult.id, 1);
 });
 
-test('missing moderation data does not expose direct details', async () => {
-    const { service } = loadService(() => ({ body: movie(1) }));
+test('missing poster data does not expose direct details', async () => {
+    const { service } = loadService(() => ({ body: movie(1, { poster_path: null }) }));
     await assert.rejects(service.getSafeDetails('movie', '1'), error => error.status === 404);
-});
-
-test('keyword failure is surfaced instead of displaying unchecked items', async () => {
-    const { service } = loadService(({ path: endpoint }) => endpoint === 'movie/popular'
-        ? { body: list([movie(1)]) } : { status: 503 });
-    await assert.rejects(service.getTmdbData('movie/popular', new URLSearchParams()), error => error.status === 502);
 });
 
 test('trailer falls back to English; absent trailers do not break details', async () => {
@@ -130,9 +161,9 @@ test('empty searches do not fetch; invalid IDs, pages and unlisted endpoints are
 test('catalog fills only empty synopses with one English page, preserving titles and ranking', async () => {
     const { service, calls } = loadService(({ path: endpoint, params }) => ({ body: endpoint === 'movie/popular'
         ? params.get('language') === 'id-ID'
-            ? list([movie(1, { overview: '   ', original_title: 'Judul Asli', original_language: 'id' }), movie(2)])
+            ? list([movie(1, { overview: '   ', original_title: 'Judul Asli', original_language: 'id', status: 'Released' }), movie(2, { status: 'Released' })])
             : list([movie(2, { title: 'English 2', overview: 'English 2 synopsis' }), movie(1, { title: 'English 1', overview: 'English synopsis' })])
-        : { keywords: [] } }));
+        : { status: 'Released', poster_path: '/poster.jpg' } }));
     const data = await service.getTmdbData('movie/popular', new URLSearchParams());
     assert.deepEqual(data.results.map(item => item.id), [1, 2]);
     assert.equal(data.results[0].overview, 'English synopsis');
@@ -144,10 +175,10 @@ test('catalog fills only empty synopses with one English page, preserving titles
 test('search matches synopsis fallback by media type and ID, including items absent from English page', async () => {
     const { service } = loadService(({ path: endpoint, params }) => {
         if (endpoint === 'search/multi') return { body: params.get('language') === 'id-ID'
-            ? list([movie(1, { overview: '' }), { id: 1, name: 'Serial Lokal', media_type: 'tv', poster_path: '/tv.jpg', overview: '' }, movie(2, { overview: '' })])
+            ? list([movie(1, { overview: '', status: 'Released' }), { id: 1, name: 'Serial Lokal', media_type: 'tv', poster_path: '/tv.jpg', overview: '', status: 'Returning Series', first_air_date: '2020-01-01' }, movie(2, { overview: '', status: 'Released' })])
             : list([{ id: 1, name: 'English TV', media_type: 'tv', overview: 'TV synopsis' }, movie(1, { overview: 'Movie synopsis' })]) };
-        if (endpoint === 'movie/2') return { body: movie(2, { title: 'English title', overview: 'Detail synopsis' }) };
-        return { body: { keywords: [], results: [] } };
+        if (endpoint === 'movie/2') return { body: movie(2, { title: 'English title', overview: 'Detail synopsis', status: 'Released' }) };
+        return { body: { status: 'Released', poster_path: '/tv.jpg' } };
     });
     const data = await service.getTmdbData('search/multi', new URLSearchParams({ query: 'film' }));
     assert.deepEqual(data.results.map(item => item.overview), ['Movie synopsis', 'TV synopsis', 'Detail synopsis']);
@@ -156,7 +187,7 @@ test('search matches synopsis fallback by media type and ID, including items abs
 
 test('movie details retain Indonesian title when synopsis is borrowed from English', async () => {
     const { service } = loadService(({ params }) => ({ body: params.get('language') === 'id-ID'
-        ? { ...movie(1, { title: 'Serbuan Maut', original_title: 'Serbuan Maut', original_language: 'id', overview: '' }), keywords: { keywords: [] } }
+        ? movie(1, { title: 'Serbuan Maut', original_title: 'Serbuan Maut', original_language: 'id', overview: '', status: 'Released' })
         : movie(1, { title: 'The Raid', overview: 'English synopsis.' }) }));
     const data = await service.getSafeDetails('movie', '1');
     assert.equal(data.title, 'Serbuan Maut');
@@ -166,10 +197,10 @@ test('movie details retain Indonesian title when synopsis is borrowed from Engli
 test('series season summaries and season episode summaries fall back independently by ID', async () => {
     const { service } = loadService(({ path: endpoint, params }) => {
         if (endpoint === 'tv/1') return { body: params.get('language') === 'id-ID'
-            ? { id: 1, name: 'Serial Lokal', overview: 'Sinopsis lokal.', keywords: { results: [] }, seasons: [{ id: 20, name: 'Musim kedua', overview: '' }, { id: 10, name: 'Musim pertama', overview: 'Lokal.' }] }
+            ? { id: 1, name: 'Serial Lokal', poster_path: '/tv.jpg', status: 'Returning Series', first_air_date: '2020-01-01', overview: 'Sinopsis lokal.', seasons: [{ id: 20, name: 'Musim kedua', overview: '' }, { id: 10, name: 'Musim pertama', overview: 'Lokal.' }] }
             : { id: 1, name: 'English TV', overview: 'English TV synopsis', seasons: [{ id: 10, overview: 'English first' }, { id: 20, overview: 'English second' }] } };
         return { body: params.get('language') === 'id-ID'
-            ? { name: 'Musim lokal', overview: '', episodes: [{ id: 200, name: 'Episode lokal', overview: '  ' }, { id: 100, overview: 'Lokal.' }] }
+            ? { name: 'Musim lokal', poster_path: '/tv.jpg', overview: '', episodes: [{ id: 200, name: 'Episode lokal', overview: '  ' }, { id: 100, overview: 'Lokal.' }] }
             : { name: 'English season', overview: 'Season synopsis', episodes: [{ id: 100, overview: 'English first' }, { id: 200, overview: 'English second' }] } };
     });
     const tv = await service.getSafeDetails('tv', '1');
@@ -186,9 +217,9 @@ test('series season summaries and season episode summaries fall back independent
 test('optional English failure keeps safe content accessible and displays an honest placeholder', async () => {
     const { service, policy, calls } = loadService(({ path: endpoint, params }) => {
         if (params.get('language') === 'en-US') return { status: 503 };
-        if (endpoint === 'movie/popular') return { body: list([movie(1, { overview: '' })]) };
-        if (endpoint === 'movie/1') return { body: { ...movie(1, { overview: '' }), keywords: { keywords: [] } } };
-        return { body: { keywords: [] } };
+        if (endpoint === 'movie/popular') return { body: list([movie(1, { overview: '', status: 'Released' })]) };
+        if (endpoint === 'movie/1') return { body: movie(1, { overview: '', status: 'Released' }) };
+        return { body: { status: 'Released', poster_path: '/poster.jpg' } };
     });
     const data = await service.getTmdbData('movie/popular', new URLSearchParams());
     assert.equal(data.results.length, 1);
@@ -200,7 +231,7 @@ test('optional English failure keeps safe content accessible and displays an hon
 
 test('complete localized synopses do not trigger English requests', async () => {
     const { service, calls } = loadService(({ path: endpoint }) => ({ body: endpoint === 'movie/popular'
-        ? list([movie(1)]) : endpoint === 'movie/1' ? { ...movie(1), keywords: { keywords: [] } } : { keywords: [] } }));
+        ? list([movie(1, { status: 'Released' })]) : endpoint === 'movie/1' ? movie(1, { status: 'Released' }) : { status: 'Released', poster_path: '/poster.jpg' } }));
     await service.getTmdbData('movie/popular', new URLSearchParams());
     await service.getSafeDetails('movie', '1');
     assert.ok(calls.every(call => call.params.get('language') === 'id-ID'));

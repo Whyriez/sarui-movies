@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { canShowInCatalog, getMediaTitle, hasExplicitKeywords, MediaType, TmdbKeywords, TmdbList, TmdbMedia, TmdbVideos } from './tmdb-policy';
+import { canShowInCatalog, getMediaTitle, isDateReleased, isPosterValid, MediaType, TmdbList, TmdbMedia, TmdbVideos } from './tmdb-policy';
 
 export class TmdbError extends Error {
     constructor(message: string, public status: number) { super(message); }
@@ -54,8 +54,6 @@ async function fillDetailOverviews<T extends OverviewData>(path: string, data: T
 
 async function fillCatalogOverviews(path: string, params: Record<string, string>, data: TmdbList): Promise<TmdbList> {
     if (!data.results.some(media => !media.overview?.trim())) return data;
-    // One fallback list request usually fills the whole page. Match by type + ID,
-    // because localized search pages can have different rankings and mixed types.
     const english = await optionalEnglish<TmdbList>(path, params);
     if (!english) return data;
     const byId = new Map(english?.results?.map(media => [
@@ -77,15 +75,37 @@ async function fillCatalogOverviews(path: string, params: Record<string, string>
 
 export const getSafeDetails = cache(async <T extends TmdbMedia>(type: MediaType, id: string): Promise<T> => {
     if (!/^\d+$/.test(id)) throw new TmdbError('ID tidak valid.', 400);
-    const data = await request<T & { keywords: TmdbKeywords }>(`${type}/${id}`, { append_to_response: 'keywords' });
-    if (data.adult || !data.keywords || hasExplicitKeywords(data.keywords)) throw new TmdbError('Konten tidak tersedia.', 404);
+    const data = await request<T & { status?: string; poster_path?: string | null; release_date?: string; first_air_date?: string }>(`${type}/${id}`);
+
+    // Poster wajib ada dan valid
+    if (!isPosterValid(data.poster_path)) {
+        throw new TmdbError('Poster film tidak tersedia.', 404);
+    }
+
+    // Status harus Released untuk film, tidak boleh In Production / Post Production / Planned / Pilot untuk serial
+    if (type === 'movie') {
+        if (data.status && data.status.toLowerCase() !== 'released') {
+            throw new TmdbError(`Film belum dirilis (status: ${data.status}).`, 404);
+        }
+        if (data.release_date && !isDateReleased(data.release_date)) {
+            throw new TmdbError('Film belum dirilis.', 404);
+        }
+    } else if (type === 'tv') {
+        const unreleasedTv = ['in production', 'post production', 'planned', 'pilot'];
+        if (data.status && unreleasedTv.includes(data.status.toLowerCase())) {
+            throw new TmdbError(`Serial belum dirilis (status: ${data.status}).`, 404);
+        }
+        if (data.first_air_date && !isDateReleased(data.first_air_date)) {
+            throw new TmdbError('Serial belum dirilis.', 404);
+        }
+    }
+
     const title = getMediaTitle(data);
     const details = await fillDetailOverviews(`${type}/${id}`, data);
     return { ...details, ...(type === 'movie' ? { title } : { name: title }) };
 });
 
 export const getVideos = cache(async (type: MediaType, id: string): Promise<TmdbVideos> => {
-    // Trailer availability should not prevent a valid detail page from opening.
     try {
         const localized = await request<TmdbVideos>(`${type}/${id}/videos`);
         if (localized.results?.some(video => video.type === 'Trailer' && video.site === 'YouTube')) return localized;
@@ -104,24 +124,43 @@ export const getSafeSeason = cache(async (id: string, season: string) => {
 async function filterCatalog(data: TmdbList, type?: MediaType): Promise<TmdbList> {
     const candidates = data.results.filter(media => canShowInCatalog(media, type));
     const results: TmdbMedia[] = [];
-    // Bound concurrent keyword requests; successful responses are cached for one hour.
+
     for (let offset = 0; offset < candidates.length; offset += 4) {
         const batch = await Promise.all(candidates.slice(offset, offset + 4).map(async media => {
             const mediaType = (media.media_type ?? type) as MediaType;
             try {
-                const keywords = await request<TmdbKeywords>(`${mediaType}/${media.id}/keywords`);
-                if (hasExplicitKeywords(keywords)) return null;
+                let status = media.status;
+                let posterPath = media.poster_path;
+
+                // Verifikasi status dan poster dari detail jika status belum ada di objek list
+                if (!status) {
+                    const detail = await request<{ status?: string; poster_path?: string | null }>(`${mediaType}/${media.id}`);
+                    status = detail?.status;
+                    if (detail?.poster_path !== undefined) posterPath = detail.poster_path;
+                }
+
+                // Poster tidak boleh kosong
+                if (!isPosterValid(posterPath)) {
+                    return null;
+                }
+
+                // Status harus Released untuk film, tidak boleh in production/planned untuk TV
+                if (mediaType === 'movie') {
+                    if (status && status.toLowerCase() !== 'released') return null;
+                } else if (mediaType === 'tv') {
+                    const unreleasedTv = ['in production', 'post production', 'planned', 'pilot'];
+                    if (status && unreleasedTv.includes(status.toLowerCase())) return null;
+                }
+
                 const title = getMediaTitle(media);
                 return { ...media, media_type: mediaType, ...(mediaType === 'movie' ? { title } : { name: title }) };
             } catch (error) {
                 if (error instanceof TmdbError && error.status === 404) return null;
-                // Do not silently serve unchecked content when moderation data fails.
                 throw error;
             }
         }));
         for (const media of batch) if (media) results.push(media);
     }
-    // Keep upstream page boundaries and relevance order after filtering.
     return { ...data, results, total_pages: Math.min(data.total_pages, 500) };
 }
 
@@ -135,7 +174,7 @@ export async function getTmdbData(path: string, params: URLSearchParams) {
     else if (path === 'search/multi') {
         const query = params.get('query')?.trim() ?? '';
         if (!query) return { results: [], page: Number(page), total_pages: 0, total_results: 0 };
-        const searchParams = { page, query, include_adult: 'false' };
+        const searchParams = { page, query, include_adult: 'true' };
         const data = await filterCatalog(await request<TmdbList>(path, searchParams));
         return fillCatalogOverviews(path, searchParams, data);
     } else if (/^(movie|tv)\/\d+$/.test(path)) {
@@ -147,7 +186,7 @@ export async function getTmdbData(path: string, params: URLSearchParams) {
         const details = await getSafeSeason(id, season);
         return { ...details, videos: await getVideos('tv', id) };
     } else throw new TmdbError('Endpoint tidak tersedia.', 404);
-    const listParams = { page, include_adult: 'false' };
+    const listParams = { page, include_adult: 'true' };
     const data = await filterCatalog(await request<TmdbList>(path, listParams), type);
     return fillCatalogOverviews(path, listParams, data);
 }
