@@ -14,12 +14,15 @@ interface LicenseModalProps {
   inline?: boolean;
 }
 
-type LicenseType = 'demo' | 'master';
+type LicenseType = 'demo' | 'master' | 'custom';
+type BusyAction = 'demo' | 'activate';
 type Feedback = { kind: 'error' | 'success'; message: string } | null;
 
 type VerifyResponse = {
   valid?: boolean;
   type?: LicenseType;
+  key?: string;
+  name?: string;
   expiresAt?: number | null;
   message?: string;
 };
@@ -39,7 +42,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
   const [mounted, setMounted] = useState(false);
   const [licenseKey, setLicenseKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [busy, setBusy] = useState<LicenseType | null>(null);
+  const [busy, setBusy] = useState<BusyAction | null>(null);
   const [feedback, setFeedback] = useState<Feedback>(null);
 
   useEffect(() => setMounted(true), []);
@@ -101,9 +104,9 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
     };
   }, [inline, isOpen, mounted, onClose]);
 
-  const verifyLicense = async (key: string, expectedType: LicenseType) => {
+  const verifyLicense = async (key: string, action: BusyAction, expectedType?: LicenseType) => {
     if (busy) return;
-    setBusy(expectedType);
+    setBusy(action);
     setFeedback(null);
 
     const controller = new AbortController();
@@ -119,30 +122,36 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
       });
 
       const data: VerifyResponse = await response.json().catch(() => ({}));
-      if (!response.ok || !data.valid || data.type !== expectedType) {
-        throw new Error('Unable to verify your license key. Please try again.');
+      if (!response.ok || !data.valid) {
+        throw new Error(data.message || 'Unable to verify your license key. Please try again.');
+      }
+
+      if (expectedType && data.type !== expectedType) {
+        throw new Error('License type mismatch. Please try again.');
       }
 
       const activatedAt = Date.now();
-      const license: LicenseData = expectedType === 'demo'
-        ? {
-            type: 'demo',
-            key,
-            activatedAt,
-            expiresAt: typeof data.expiresAt === 'number' && Number.isFinite(data.expiresAt)
-              ? data.expiresAt
+      const resultType: LicenseType = data.type || (data.expiresAt === null ? 'master' : 'custom');
+
+      const license: LicenseData = {
+        type: resultType,
+        key: data.key || key,
+        name: data.name,
+        activatedAt,
+        expiresAt:
+          typeof data.expiresAt === 'number' && Number.isFinite(data.expiresAt)
+            ? data.expiresAt
+            : resultType === 'master'
+              ? null
               : activatedAt + 30 * 60 * 1000,
-          }
-        : {
-            type: 'master',
-            key,
-            activatedAt,
-            expiresAt: null,
-          };
+      };
 
       if (controller.signal.aborted) return;
       saveLicense(license);
-      setFeedback({ kind: 'success', message: 'Access activated successfully.' });
+      setFeedback({
+        kind: 'success',
+        message: data.message || 'Access activated successfully.',
+      });
       onSuccess(license);
     } catch (error) {
       if (controller.signal.aborted) return;
@@ -158,7 +167,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
     }
   };
 
-  const activateDemo = () => void verifyLicense(DEMO_LICENSE_KEY, 'demo');
+  const activateDemo = () => void verifyLicense(DEMO_LICENSE_KEY, 'demo', 'demo');
 
   const activateLicense = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -167,7 +176,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
       setFeedback({ kind: 'error', message: 'Enter your license key to continue.' });
       return;
     }
-    void verifyLicense(key, 'master');
+    void verifyLicense(key, 'activate');
   };
 
   if (!inline && (!mounted || !isOpen)) return null;
@@ -216,7 +225,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
           Ready to Watch?
         </h2>
         <p className="mt-2 text-xs sm:text-[13px] leading-relaxed text-zinc-500 dark:text-zinc-400">
-          Activate a 30-minute demo to explore streaming, or unlock permanent playback with your Master Key.
+          Activate a 30-minute demo to explore streaming, or unlock extended playback with a license key (e.g. MAGANGBPS2026 or Master Key).
         </p>
       </header>
 
@@ -269,18 +278,18 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
             inline ? 'bg-[#121215]' : 'bg-white dark:bg-[#121215]'
           }`}
         >
-          Or use master key
+          Or enter license key
         </span>
       </div>
 
-      {/* Master License Form */}
+      {/* Custom & Master License Form */}
       <section aria-labelledby={`${headingId}-license`}>
         <div className="flex items-center justify-between mb-1">
           <h3 id={`${headingId}-license`} className="text-sm font-semibold text-zinc-900 dark:text-white">
-            Have a Master Key?
+            Have a License Key?
           </h3>
           <span className="text-[11px] text-zinc-400 dark:text-zinc-500">
-            Permanent
+            Master / Custom
           </span>
         </div>
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">
@@ -298,7 +307,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
                 if (feedback?.kind === 'error') setFeedback(null);
               }}
               disabled={busy !== null}
-              placeholder="Enter your Master License Key..."
+              placeholder="Enter your License Key (e.g. MAGANGBPS2026)..."
               autoComplete="off"
               spellCheck={false}
               aria-invalid={feedback?.kind === 'error' ? true : undefined}
@@ -331,8 +340,8 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
                 : 'border-zinc-300 bg-white hover:bg-zinc-50 text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800/90 dark:hover:bg-zinc-700 dark:text-zinc-100'
             }`}
           >
-            {busy === 'master' && <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />}
-            {busy === 'master' ? 'Verifying Key...' : 'Activate Master Key'}
+            {busy === 'activate' && <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />}
+            {busy === 'activate' ? 'Verifying Key...' : 'Activate License Key'}
           </button>
         </form>
       </section>

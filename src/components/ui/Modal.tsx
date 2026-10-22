@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Captions, Check, ChevronDown, Key, RefreshCw, Shield, Sparkles, X } from 'lucide-react';
-import { isLicenseValid, getStoredLicense, getRemainingDemoSeconds, formatDuration, LicenseData } from '@/lib/license';
+import { isLicenseValid, getStoredLicense, getRemainingSeconds, formatDuration, LicenseData } from '@/lib/license';
 import { LicenseModal } from './LicenseModal';
 
 export interface ModalProps {
@@ -256,18 +256,18 @@ const Modal: React.FC<ModalProps> = ({
     setHasValidLicense(valid);
     const current = getStoredLicense();
     setLicenseData(current);
-    if (current?.type === 'demo') {
-      setRemainingDemoSeconds(getRemainingDemoSeconds());
+    if (current?.expiresAt) {
+      setRemainingDemoSeconds(getRemainingSeconds());
     } else {
       setRemainingDemoSeconds(null);
     }
   }, [isOpen]);
 
-  // Active countdown for demo license
+  // Active countdown for time-limited licenses (demo or custom)
   useEffect(() => {
-    if (!isOpen || !hasValidLicense || licenseData?.type !== 'demo') return;
+    if (!isOpen || !hasValidLicense || !licenseData?.expiresAt) return;
     const interval = setInterval(() => {
-      const remaining = getRemainingDemoSeconds();
+      const remaining = getRemainingSeconds();
       setRemainingDemoSeconds(remaining);
       if (remaining !== null && remaining <= 0) {
         setHasValidLicense(false);
@@ -372,8 +372,10 @@ const Modal: React.FC<ModalProps> = ({
                 onSuccess={(newLic) => {
                   setHasValidLicense(true);
                   setLicenseData(newLic);
-                  if (newLic.type === 'demo') {
-                    setRemainingDemoSeconds(getRemainingDemoSeconds());
+                  if (newLic.expiresAt) {
+                    setRemainingDemoSeconds(getRemainingSeconds());
+                  } else {
+                    setRemainingDemoSeconds(null);
                   }
                   reloadPlayer();
                 }}
@@ -474,6 +476,11 @@ const Modal: React.FC<ModalProps> = ({
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
                       <Key size={12} className="text-amber-400" />
                       Master VIP
+                    </span>
+                  ) : licenseData?.type === 'custom' ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/25 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+                      <Sparkles size={12} className="text-emerald-400" />
+                      {licenseData.name || 'Custom'}: {remainingDemoSeconds !== null ? formatDuration(remainingDemoSeconds) : 'Active'}
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500/10 border border-rose-500/25 px-2.5 py-1 text-[11px] font-semibold text-rose-300">
@@ -591,8 +598,10 @@ const Modal: React.FC<ModalProps> = ({
             setHasValidLicense(true);
             setLicenseData(newLic);
             setShowLicensePopup(false);
-            if (newLic.type === 'demo') {
-              setRemainingDemoSeconds(getRemainingDemoSeconds());
+            if (newLic.expiresAt) {
+              setRemainingDemoSeconds(getRemainingSeconds());
+            } else {
+              setRemainingDemoSeconds(null);
             }
             reloadPlayer();
           }}

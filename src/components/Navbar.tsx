@@ -8,7 +8,7 @@ import ThemeToggle from './ui/ThemeToggle';
 import {
   isLicenseValid,
   getStoredLicense,
-  getRemainingDemoSeconds,
+  getRemainingSeconds,
   formatDuration,
   type LicenseData,
 } from '@/lib/license';
@@ -80,7 +80,7 @@ function NavbarContent() {
       }
       const current = getStoredLicense();
       setLicense(current);
-      setRemainingSeconds(current?.type === 'demo' ? getRemainingDemoSeconds() : null);
+      setRemainingSeconds(current?.expiresAt ? getRemainingSeconds() : null);
     };
     refresh();
     const interval = window.setInterval(refresh, 2000);
@@ -221,11 +221,27 @@ function NavbarContent() {
                 type="button"
                 onClick={() => setShowLicenseModal(true)}
                 aria-label="Manage streaming license"
-                title={license?.type === 'master' ? 'Owner access' : license?.type === 'demo' ? 'Demo access' : 'Activate access'}
+                title={
+                  license?.type === 'master'
+                    ? 'Owner access (Permanent)'
+                    : license?.type === 'custom'
+                    ? `${license.name || 'Custom License'}: ${remainingSeconds !== null ? formatDuration(remainingSeconds) : 'Active'}`
+                    : license?.type === 'demo'
+                    ? `Demo access: ${remainingSeconds !== null ? formatDuration(remainingSeconds) : 'Active'}`
+                    : 'Activate access'
+                }
                 className="inline-flex h-9 min-w-9 items-center justify-center gap-2 border border-zinc-200 px-2.5 text-[12px] font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-950 dark:border-white/10 dark:text-zinc-300 dark:hover:border-white/30 dark:hover:text-white sm:px-3"
               >
                 <KeyRound size={15} strokeWidth={1.6} />
-                <span className="hidden sm:inline">{license?.type === 'master' ? 'Owner' : license?.type === 'demo' ? (remainingSeconds !== null ? formatDuration(remainingSeconds) : 'Demo') : 'Access'}</span>
+                <span className="hidden sm:inline">
+                  {license?.type === 'master'
+                    ? 'Owner'
+                    : license?.type === 'custom'
+                    ? (remainingSeconds !== null ? `${license.name ? license.name.split(' ')[0] : 'Pass'} ${formatDuration(remainingSeconds)}` : license.name || 'Active')
+                    : license?.type === 'demo'
+                    ? (remainingSeconds !== null ? formatDuration(remainingSeconds) : 'Demo')
+                    : 'Access'}
+                </span>
               </button>
             )}
           </div>

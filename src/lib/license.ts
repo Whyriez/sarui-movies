@@ -1,11 +1,33 @@
-'use client';
+export type LicenseType = 'master' | 'demo' | 'custom';
 
 export interface LicenseData {
-  type: 'master' | 'demo';
+  type: LicenseType;
   key: string;
+  name?: string;
   activatedAt: number;
   expiresAt: number | null; // null for permanent master license
 }
+
+export interface CustomKeyConfig {
+  key: string;
+  name: string;
+  durationMonths?: number;
+  durationDays?: number;
+  durationMinutes?: number;
+}
+
+/**
+ * Configurable list of custom duration license keys.
+ * You can add more keys here or override/extend via process.env.CUSTOM_LICENSE_KEYS.
+ */
+export const CONFIG_CUSTOM_KEYS: CustomKeyConfig[] = [
+  {
+    key: 'MAGANGBPS2026',
+    name: 'Magang BPS 2026',
+    durationMonths: 6,
+    durationDays: 180,
+  },
+];
 
 export const DEMO_LICENSE_KEY = 'DEMO-SARUI-30M';
 export const DEMO_DURATION_MINUTES = 30;
@@ -35,13 +57,13 @@ export function isLicenseValid(): boolean {
   const license = getStoredLicense();
   if (!license) return false;
 
-  // Master key has permanent access
-  if (license.type === 'master') {
+  // Master key has permanent access (or any license with no expiration)
+  if (license.type === 'master' || license.expiresAt === null) {
     return true;
   }
 
-  // Demo key must not exceed expiresAt
-  if (license.type === 'demo' && license.expiresAt) {
+  // Time-limited keys (demo, custom) must not exceed expiresAt
+  if (license.expiresAt) {
     return Date.now() < license.expiresAt;
   }
 
@@ -49,14 +71,21 @@ export function isLicenseValid(): boolean {
 }
 
 /**
- * Calculate remaining seconds for demo license.
+ * Calculate remaining seconds for any time-limited license (demo or custom).
  * Returns null if master license or no active license.
  */
-export function getRemainingDemoSeconds(): number | null {
+export function getRemainingSeconds(): number | null {
   const license = getStoredLicense();
-  if (!license || license.type !== 'demo' || !license.expiresAt) return null;
+  if (!license || license.expiresAt === null) return null;
   const remaining = Math.max(0, Math.floor((license.expiresAt - Date.now()) / 1000));
   return remaining;
+}
+
+/**
+ * Backwards-compatible alias for getRemainingSeconds.
+ */
+export function getRemainingDemoSeconds(): number | null {
+  return getRemainingSeconds();
 }
 
 /**
@@ -84,9 +113,21 @@ export function clearLicense(): void {
 }
 
 /**
- * Format remaining seconds to mm:ss format.
+ * Format remaining seconds into a user-friendly duration string.
+ * - Days: e.g. "180d"
+ * - Hours: e.g. "2h 15m"
+ * - Minutes / Seconds: "mm:ss"
  */
 export function formatDuration(seconds: number): string {
+  if (seconds >= 86400) {
+    const days = Math.floor(seconds / 86400);
+    return `${days}d`;
+  }
+  if (seconds >= 3600) {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours}h ${minutes}m`;
+  }
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${s < 10 ? '0' : ''}${s}`;
