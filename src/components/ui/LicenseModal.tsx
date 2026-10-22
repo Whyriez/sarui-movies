@@ -307,7 +307,7 @@ export const LicenseModal: React.FC<LicenseModalProps> = ({
                 if (feedback?.kind === 'error') setFeedback(null);
               }}
               disabled={busy !== null}
-              placeholder="Enter your License Key (e.g. MAGANGBPS2026)..."
+              placeholder="Enter your License Key..."
               autoComplete="off"
               spellCheck={false}
               aria-invalid={feedback?.kind === 'error' ? true : undefined}
