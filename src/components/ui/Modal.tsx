@@ -3,6 +3,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Captions, Check, ChevronDown, Key, RefreshCw, Shield, Sparkles, X } from 'lucide-react';
 import { isLicenseValid, getStoredLicense, getRemainingSeconds, formatDuration, LicenseData } from '@/lib/license';
+import {
+  saveWatchProgress,
+  getWatchItem,
+  formatProgressTime,
+} from '@/lib/watchHistory';
 import { LicenseModal } from './LicenseModal';
 
 export interface ModalProps {
@@ -15,6 +20,8 @@ export interface ModalProps {
   trailerKey?: string | null;
   season?: string;
   episode?: number;
+  posterPath?: string | null;
+  backdropPath?: string | null;
 }
 
 type StreamContext = {
@@ -25,6 +32,7 @@ type StreamContext = {
   formattedTitle: string;
   rawTitle: string;
   subtitleUrl: string | null;
+  startTime?: number | null;
 };
 
 type ServerOption = {
@@ -47,7 +55,7 @@ const SERVERS: ServerOption[] = [
     id: 'server1',
     label: 'Server 1',
     referrerPolicy: 'strict-origin-when-cross-origin',
-    getUrl: ({ isSeries, tmdbId, season, episode, rawTitle }) => {
+    getUrl: ({ isSeries, tmdbId, season, episode, rawTitle, startTime }) => {
       const base = trimSlash(
         process.env.NEXT_PUBLIC_STREAM_PROVIDER_URL ||
           'https://sarui-mov-provider.vercel.app',
@@ -57,6 +65,9 @@ const SERVERS: ServerOption[] = [
         : `/embed/movie/${encodeURIComponent(tmdbId)}`;
       const params = new URLSearchParams({ autoplay: '1' });
       if (rawTitle) params.set('title', rawTitle);
+      if (startTime && startTime > 5) {
+        params.set('t', String(Math.floor(startTime)));
+      }
 
       // Never put an API secret or NEXT_PUBLIC_* key in a browser iframe URL.
       // If the provider requires authentication, resolve a short-lived embed
@@ -124,6 +135,9 @@ const SERVERS: ServerOption[] = [
       );
       const query = new URLSearchParams();
       if (ctx.isSeries) query.set('nextbutton', 'true');
+      if (ctx.startTime && ctx.startTime > 5) {
+        query.set('start', String(Math.floor(ctx.startTime)));
+      }
       if (ctx.subtitleUrl) {
         query.set('sub_file', ctx.subtitleUrl);
         query.set('sub_label', 'Custom Subtitle');
@@ -176,6 +190,8 @@ const Modal: React.FC<ModalProps> = ({
   trailerKey,
   season,
   episode,
+  posterPath,
+  backdropPath,
 }) => {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -193,6 +209,8 @@ const Modal: React.FC<ModalProps> = ({
   const [licenseData, setLicenseData] = useState<LicenseData | null>(null);
   const [remainingDemoSeconds, setRemainingDemoSeconds] = useState<number | null>(null);
   const [showLicensePopup, setShowLicensePopup] = useState(false);
+  const [resumeStartTime, setResumeStartTime] = useState<number | null>(null);
+  const [resumeNotice, setResumeNotice] = useState<{ seconds: number; visible: boolean } | null>(null);
 
   const isTrailer = contentType === 'trailer';
   const isSeries = contentType === 'series';
@@ -210,8 +228,9 @@ const Modal: React.FC<ModalProps> = ({
       formattedTitle: formatTitle(title),
       rawTitle: title,
       subtitleUrl,
+      startTime: resumeStartTime,
     }),
-    [isSeries, tmdbId, season, episode, title, subtitleUrl],
+    [isSeries, tmdbId, season, episode, title, subtitleUrl, resumeStartTime],
   );
 
   const embedUrl = useMemo(() => {
@@ -276,6 +295,102 @@ const Modal: React.FC<ModalProps> = ({
     }, 1000);
     return () => clearInterval(interval);
   }, [isOpen, hasValidLicense, licenseData]);
+
+  // Track watch history & auto-resume position when playback begins
+  useEffect(() => {
+    if (!isOpen || isTrailer || !tmdbId) {
+      setResumeNotice(null);
+      setResumeStartTime(null);
+      return;
+    }
+
+    const previous = getWatchItem(tmdbId, isSeries ? 'tv' : 'movie');
+    const isMatchingEpisode =
+      !isSeries ||
+      (previous?.season === (season ? String(season) : undefined) &&
+        previous?.episode === (episode != null ? Number(episode) : undefined));
+
+    let startPos: number | null = null;
+    if (previous && isMatchingEpisode && previous.progressSeconds && previous.progressSeconds > 10) {
+      const isCompleted =
+        previous.durationSeconds && previous.progressSeconds >= previous.durationSeconds * 0.95;
+      if (!isCompleted) {
+        startPos = previous.progressSeconds;
+        setResumeStartTime(startPos);
+        setResumeNotice({ seconds: startPos, visible: true });
+      }
+    }
+
+    // Register initial watch entry
+    saveWatchProgress({
+      tmdbId: String(tmdbId),
+      mediaType: isSeries ? 'tv' : 'movie',
+      title,
+      season: season ? String(season) : undefined,
+      episode: episode != null ? Number(episode) : undefined,
+      posterPath,
+      backdropPath,
+      progressSeconds: startPos ?? previous?.progressSeconds,
+      durationSeconds: previous?.durationSeconds,
+    });
+  }, [isOpen, isTrailer, tmdbId, isSeries, season, episode, title, posterPath, backdropPath]);
+
+  // Auto-dismiss resume notice after 8 seconds
+  useEffect(() => {
+    if (!resumeNotice?.visible) return;
+    const timer = setTimeout(() => {
+      setResumeNotice((prev) => (prev ? { ...prev, visible: false } : null));
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [resumeNotice?.visible]);
+
+  // Listen for progress / playback time updates from iframe postMessage
+  useEffect(() => {
+    if (!isOpen || isTrailer || !tmdbId) return;
+
+    let lastSavedTime = 0;
+    const onMessage = (event: MessageEvent) => {
+      try {
+        const payload = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        if (!payload || typeof payload !== 'object') return;
+
+        // Support formats from SaruiMov Provider, VidLink, Plyr, or HTML5 postMessage
+        const current =
+          payload.currentTime ??
+          payload.data?.currentTime ??
+          payload.time ??
+          payload.progress;
+        const duration =
+          payload.duration ??
+          payload.data?.duration ??
+          payload.totalDuration;
+
+        if (typeof current === 'number' && !isNaN(current) && current > 0) {
+          // Throttle updates: save if progressed by >= 3 seconds or on pause/ended
+          if (Math.abs(current - lastSavedTime) >= 3 || payload.event === 'pause' || payload.type === 'PAUSE') {
+            lastSavedTime = current;
+            saveWatchProgress({
+              tmdbId: String(tmdbId),
+              mediaType: isSeries ? 'tv' : 'movie',
+              title,
+              season: season ? String(season) : undefined,
+              episode: episode != null ? Number(episode) : undefined,
+              posterPath,
+              backdropPath,
+              progressSeconds: Math.floor(current),
+              durationSeconds:
+                typeof duration === 'number' && duration > 0 ? Math.floor(duration) : undefined,
+            });
+          }
+        }
+      } catch {
+        // Non-JSON or foreign postMessage
+      }
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [isOpen, isTrailer, tmdbId, isSeries, season, episode, title, posterPath, backdropPath]);
 
   const requestClose = () => {
     if (onClose) onClose();
@@ -364,6 +479,32 @@ const Modal: React.FC<ModalProps> = ({
       {/* The film should take the largest share of visual attention. */}
       <section className="relative flex min-h-0 flex-1 items-center justify-center bg-black sm:flex-none">
         <div className="relative aspect-video w-full max-h-[calc(100dvh-176px)] overflow-hidden bg-black sm:max-h-[min(72dvh,760px)]">
+          {resumeNotice && resumeNotice.visible && (
+            <div className="absolute top-3 left-3 z-30 flex items-center gap-2 rounded-xl border border-white/15 bg-black/85 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[11px] sm:text-xs font-medium text-white shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2">
+              <span>Melanjutkan dari {formatProgressTime(resumeNotice.seconds)}</span>
+              <span className="text-white/30">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setResumeStartTime(0);
+                  setResumeNotice(null);
+                  reloadPlayer();
+                }}
+                className="text-rose-400 hover:text-rose-300 underline underline-offset-2 transition-colors cursor-pointer"
+              >
+                Mulai dari awal
+              </button>
+              <button
+                type="button"
+                onClick={() => setResumeNotice(null)}
+                className="ml-1 text-white/50 hover:text-white cursor-pointer"
+                aria-label="Tutup pemberitahuan"
+              >
+                <X size={13} />
+              </button>
+            </div>
+          )}
+
           {!isTrailer && !hasValidLicense ? (
             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/95 overflow-y-auto p-4">
               <LicenseModal

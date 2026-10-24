@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Episode, SeasonDetails } from '@/interface/Tv';
 import { getOverviewText } from '@/lib/tmdb-policy';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Play } from 'lucide-react';
+import { getWatchItem, isEpisodeWatched, WATCH_HISTORY_EVENT, type WatchHistoryItem } from '@/lib/watchHistory';
 
 const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }: { tvDetails: TvDetails; tvSeasonDetail: SeasonDetails; episodes: Episode[]; trailerKey: string | null }) => {
     const { seasonId: tmdbId, seasonNumber: seasonNumber } = useParams();
@@ -36,6 +37,16 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
 
     const tmdbIdString = typeof tmdbId === 'string' ? tmdbId : '';
     const seasonNumberString = typeof seasonNumber === 'string' ? seasonNumber : '';
+
+    const [historyItem, setHistoryItem] = useState<WatchHistoryItem | null>(null);
+
+    useEffect(() => {
+        if (!tmdbIdString) return;
+        const refresh = () => setHistoryItem(getWatchItem(tmdbIdString, 'tv'));
+        refresh();
+        window.addEventListener(WATCH_HISTORY_EVENT, refresh);
+        return () => window.removeEventListener(WATCH_HISTORY_EVENT, refresh);
+    }, [tmdbIdString]);
 
     const year = tvSeasonDetail?.air_date
         ? new Date(tvSeasonDetail.air_date).getFullYear()
@@ -309,10 +320,23 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
                                     ? `Episode ${episode.episode_number}`
                                     : `Ep. ${episode.episode_number}: ${episode.name}`;
 
+                                const isCurrent =
+                                    historyItem?.season === seasonNumberString &&
+                                    historyItem?.episode === episode.episode_number;
+                                const isWatched = isEpisodeWatched(
+                                    tmdbIdString,
+                                    seasonNumberString,
+                                    episode.episode_number
+                                );
+
                                 return (
                                     <div
                                         key={episode.id}
-                                        className="flex flex-col justify-between p-4 rounded-xl bg-white hover:bg-zinc-50 border border-zinc-200 dark:bg-zinc-900/60 dark:hover:bg-zinc-900 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group shadow-sm"
+                                        className={`flex flex-col justify-between p-4 rounded-xl border transition-all group shadow-sm ${
+                                            isCurrent
+                                                ? 'bg-rose-500/5 dark:bg-rose-500/10 border-rose-500/30'
+                                                : 'bg-white hover:bg-zinc-50 border-zinc-200 dark:bg-zinc-900/60 dark:hover:bg-zinc-900 dark:border-zinc-800/80 hover:border-zinc-300 dark:hover:border-zinc-700'
+                                        }`}
                                     >
                                         <div>
                                             {episode.still_path ? (
@@ -329,6 +353,16 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
                                                     <span className="absolute bottom-2 left-2 text-[10px] font-bold text-white bg-rose-600 px-2 py-0.5 rounded shadow">
                                                         Ep. {episode.episode_number}
                                                     </span>
+                                                    {isCurrent ? (
+                                                        <span className="absolute top-2 right-2 text-[10px] font-semibold text-rose-300 bg-black/85 border border-rose-500/40 px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1 shadow">
+                                                            <span className="size-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                                            Terakhir Ditonton
+                                                        </span>
+                                                    ) : isWatched ? (
+                                                        <span className="absolute top-2 right-2 text-[10px] font-semibold text-emerald-300 bg-black/85 border border-emerald-500/30 px-2 py-0.5 rounded-full backdrop-blur-sm flex items-center gap-1 shadow">
+                                                            ✓ Ditonton
+                                                        </span>
+                                                    ) : null}
                                                     {episode.runtime ? (
                                                         <span className="absolute bottom-2 right-2 text-[10px] font-medium bg-black/70 text-zinc-300 px-1.5 py-0.5 rounded backdrop-blur-sm">
                                                             {episode.runtime}m
@@ -337,9 +371,20 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
                                                 </div>
                                             ) : (
                                                 <div className="flex items-center justify-between gap-2 mb-2">
-                                                    <span className="text-[10px] font-bold text-white bg-rose-600 px-2 py-0.5 rounded">
-                                                        Ep. {episode.episode_number}
-                                                    </span>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-[10px] font-bold text-white bg-rose-600 px-2 py-0.5 rounded">
+                                                            Ep. {episode.episode_number}
+                                                        </span>
+                                                        {isCurrent ? (
+                                                            <span className="text-[10px] font-semibold text-rose-500 dark:text-rose-400">
+                                                                • Terakhir Ditonton
+                                                            </span>
+                                                        ) : isWatched ? (
+                                                            <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                                                • Ditonton
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                     {episode.runtime ? (
                                                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
                                                             {episode.runtime} min
@@ -364,11 +409,23 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
                                         </div>
 
                                         <button
-                                            className="bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-2.5 px-4 w-full rounded-xl shadow-lg shadow-rose-600/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5"
+                                            className={`${
+                                                isCurrent
+                                                    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/25 ring-2 ring-rose-500/30'
+                                                    : isWatched
+                                                    ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                                                    : 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
+                                            } font-bold text-xs py-2.5 px-4 w-full rounded-xl hover:scale-[1.02] transition-all flex items-center justify-center gap-1.5`}
                                             onClick={() => handleShowModal('series', episode)}
                                         >
                                             <Play size={14} className="fill-current" />
-                                            <span>Play Episode {episode.episode_number}</span>
+                                            <span>
+                                                {isCurrent
+                                                    ? `Lanjut Episode ${episode.episode_number}`
+                                                    : isWatched
+                                                    ? `Tonton Ulang Ep. ${episode.episode_number}`
+                                                    : `Play Episode ${episode.episode_number}`}
+                                            </span>
                                         </button>
                                     </div>
                                 );
@@ -466,6 +523,8 @@ const DetailSeasonEpisode = ({ tvDetails, tvSeasonDetail, episodes, trailerKey }
                         trailerKey={trailerKey}
                         season={seasonNumberString}
                         episode={selectedEpisode}
+                        posterPath={tvSeasonDetail?.poster_path || tvDetails.poster_path}
+                        backdropPath={tvDetails.backdrop_path}
                     />
                 )}
             </div>

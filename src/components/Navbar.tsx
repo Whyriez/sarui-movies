@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { ChevronDown, KeyRound, Menu, Search, X } from 'lucide-react';
+import { ChevronDown, Clock, KeyRound, Menu, Search, X } from 'lucide-react';
 import ThemeToggle from './ui/ThemeToggle';
 import {
   isLicenseValid,
@@ -13,6 +13,7 @@ import {
   type LicenseData,
 } from '@/lib/license';
 import { LicenseModal } from './ui/LicenseModal';
+import { WatchHistoryModal } from './ui/WatchHistoryModal';
 
 const movieLinks = [
   { label: 'Trending', href: '/trending' },
@@ -58,6 +59,7 @@ function NavbarContent() {
   const [license, setLicense] = useState<LicenseData | null>(null);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -219,6 +221,18 @@ function NavbarContent() {
             {hydrated && (
               <button
                 type="button"
+                onClick={() => setShowHistoryModal(true)}
+                aria-label="View watch history"
+                title="Watch History"
+                className="inline-flex h-9 items-center justify-center gap-1.5 border border-zinc-200 px-2.5 text-[12px] font-medium text-zinc-600 transition-colors hover:border-zinc-400 hover:text-zinc-950 dark:border-white/10 dark:text-zinc-300 dark:hover:border-white/30 dark:hover:text-white"
+              >
+                <Clock size={15} strokeWidth={1.6} />
+                <span className="hidden sm:inline">History</span>
+              </button>
+            )}
+            {hydrated && (
+              <button
+                type="button"
                 onClick={() => setShowLicenseModal(true)}
                 aria-label="Manage streaming license"
                 title={
@@ -263,6 +277,14 @@ function NavbarContent() {
         {mobileOpen && (
           <nav aria-label="Mobile navigation" className="max-h-[calc(100dvh-68px)] overflow-y-auto border-t border-zinc-200 bg-white px-5 py-5 dark:border-white/10 dark:bg-[#09090b] lg:hidden">
             <Link href="/" onClick={() => setMobileOpen(false)} className="block py-2 text-sm font-medium">Home</Link>
+            <button
+              type="button"
+              onClick={() => { setMobileOpen(false); setShowHistoryModal(true); }}
+              className="flex w-full items-center gap-2 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-200"
+            >
+              <Clock size={16} />
+              <span>Watch History</span>
+            </button>
             <div className="mt-5 grid grid-cols-2 gap-6">
               <div>
                 <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-zinc-400">Movies</p>
@@ -281,6 +303,10 @@ function NavbarContent() {
         isOpen={showLicenseModal}
         onClose={() => setShowLicenseModal(false)}
         onSuccess={(newLicense) => { setLicense(newLicense); setShowLicenseModal(false); }}
+      />
+      <WatchHistoryModal
+        isOpen={showHistoryModal}
+        onClose={() => setShowHistoryModal(false)}
       />
     </>
   );

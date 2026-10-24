@@ -7,6 +7,7 @@ import { fetchTrendingMovies } from "@/app/api/Movies";
 import Skeleton from "./ui/Skeleton";
 import Image from "next/image";
 import Link from "next/link";
+import ContinueWatching from "./ContinueWatching";
 
 const PAGE_RANGE = 1;
 
@@ -154,6 +155,9 @@ function Hero() {
                     </div>
                 </div>
             </div>
+
+            {/* CONTINUE WATCHING SECTION */}
+            <ContinueWatching />
 
             {/* CATALOG SECTION */}
             <div className="max-w-7xl mx-auto px-3 sm:px-6 py-8 sm:py-12" ref={catalogRef}>

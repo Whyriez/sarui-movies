@@ -2,16 +2,26 @@
 import Modal from '@/components/ui/Modal';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Poster from '@/components/ui/Poster';
 import Image from 'next/image';
 import { Seasons } from '@/interface/Tv';
 import { getOverviewText } from '@/lib/tmdb-policy';
+import { getWatchItem, type WatchHistoryItem } from '@/lib/watchHistory';
 
 const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; seasons: Seasons[]; trailerKey: string | null }) => {
     const { id: tmdbId } = useParams();
     const [modalContentType, setModalContentType] = useState<'play' | 'trailer' | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [historyItem, setHistoryItem] = useState<WatchHistoryItem | null>(null);
+
+    const tmdbIdString = typeof tmdbId === 'string' ? tmdbId : '';
+
+    useEffect(() => {
+        if (tmdbIdString) {
+            setHistoryItem(getWatchItem(tmdbIdString, 'tv'));
+        }
+    }, [tmdbIdString]);
 
     const handleShowModal = (contentType: 'play' | 'trailer') => {
         setModalContentType(contentType);
@@ -23,7 +33,6 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
         setModalContentType(null);
     };
 
-    const tmdbIdString = typeof tmdbId === 'string' ? tmdbId : '';
     const year = tvDetails.first_air_date ? new Date(tvDetails.first_air_date).getFullYear() : '';
 
     const backdropUrl = tvDetails.backdrop_path
@@ -121,6 +130,17 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
 
                         {/* Action Buttons */}
                         <div className="mt-6 flex flex-wrap items-center justify-center md:justify-start gap-3 w-full">
+                            {historyItem?.season && (
+                                <Link
+                                    href={`/detail/tv/season/${tmdbIdString}/${historyItem.season}`}
+                                    className="bg-rose-600 hover:bg-rose-500 text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-rose-600/20 hover:scale-[1.02]"
+                                >
+                                    <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                                        <path d="M8 5v14l11-7z" />
+                                    </svg>
+                                    <span>Lanjut: S{historyItem.season} • Ep. {historyItem.episode ?? 1}</span>
+                                </Link>
+                            )}
                             <button
                                 className="bg-white hover:bg-zinc-100 text-zinc-800 dark:bg-zinc-900 dark:hover:bg-zinc-800 dark:text-white font-semibold text-xs sm:text-sm px-5 py-3 rounded-xl border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 transition-all flex items-center gap-2 shadow-sm"
                                 onClick={() => handleShowModal('trailer')}
@@ -224,6 +244,8 @@ const DetailTv = ({ tvDetails, seasons, trailerKey }: { tvDetails: TvDetails; se
                         title={tvDetails.name}
                         tmdbId={tmdbIdString}
                         trailerKey={trailerKey}
+                        posterPath={tvDetails.poster_path}
+                        backdropPath={tvDetails.backdrop_path}
                     />
                 )}
             </div>

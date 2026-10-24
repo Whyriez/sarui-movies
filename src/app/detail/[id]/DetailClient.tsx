@@ -165,6 +165,8 @@ const Detail = ({ movieDetails, trailerKey }: { movieDetails: MovieDetails; trai
                         title={movieDetails.title}
                         tmdbId={tmdbIdString}
                         trailerKey={trailerKey}
+                        posterPath={movieDetails.poster_path}
+                        backdropPath={movieDetails.backdrop_path}
                     />
                 )}
             </div>
